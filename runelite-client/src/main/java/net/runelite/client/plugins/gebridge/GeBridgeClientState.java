@@ -12,6 +12,9 @@ class GeBridgeClientState
 	boolean membersWorld;
 	int canvasWidth;
 	int canvasHeight;
+	int canvasScreenX;
+	int canvasScreenY;
+	boolean canvasScreenPositionValid;
 	int viewportWidth;
 	int viewportHeight;
 	int viewportXOffset;
