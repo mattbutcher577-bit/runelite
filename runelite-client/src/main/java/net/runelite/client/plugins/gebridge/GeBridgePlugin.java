@@ -578,7 +578,7 @@ public class GeBridgePlugin extends Plugin
 
 	private void publishUnavailableSnapshot(GameState gameState)
 	{
-		GeBridgeClientState clientState = readClientState(gameState);
+		GeBridgeClientState clientState = GeBridgeClientState.unavailable(lastLoginTick);
 		GeBridgeInterfaceState interfaceState = new GeBridgeInterfaceState(
 			false, false, false, false, false, false, false);
 		GeBridgeGeState geState = new GeBridgeGeState(
