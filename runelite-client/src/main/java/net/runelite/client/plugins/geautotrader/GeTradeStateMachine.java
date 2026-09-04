@@ -129,6 +129,43 @@ public final class GeTradeStateMachine
 		}
 	}
 
+	private static boolean isSetupWorkflowPhase(GeTradePhase phase)
+	{
+		switch (phase)
+		{
+			case WAIT_BUY_SETUP:
+			case WAIT_SEARCH_RESULTS:
+			case WAIT_ITEM_SELECTED:
+			case WAIT_QUANTITY_PROMPT:
+			case WAIT_QUANTITY_VALUE:
+			case WAIT_PRICE_PROMPT:
+			case WAIT_PRICE_VALUE:
+			case WAIT_BUY_SLOT:
+			case WAIT_SELL_SETUP:
+			case WAIT_SELL_ITEM_SELECTED:
+			case WAIT_SELL_QUANTITY_PROMPT:
+			case WAIT_SELL_QUANTITY_VALUE:
+			case WAIT_SELL_PRICE_PROMPT:
+			case WAIT_SELL_PRICE_VALUE:
+			case WAIT_SELL_SLOT:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	private boolean anotherSetupWorkflowInProgress(int slot)
+	{
+		for (SlotContext other : contexts.values())
+		{
+			if (other != null && other.slot != slot && isSetupWorkflowPhase(other.phase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private GePlannedAction step(SlotContext context, GeObservedState state, Instant now)
 	{
 		GeObservedSlot observed = findSlot(state, context.slot);
@@ -345,6 +382,10 @@ public final class GeTradeStateMachine
 	private GePlannedAction idle(SlotContext context, GeObservedState state, GeObservedSlot observed, Instant now)
 	{
 		if (!observed.isEmpty())
+		{
+			return GePlannedAction.none();
+		}
+		if (anotherSetupWorkflowInProgress(context.slot))
 		{
 			return GePlannedAction.none();
 		}
