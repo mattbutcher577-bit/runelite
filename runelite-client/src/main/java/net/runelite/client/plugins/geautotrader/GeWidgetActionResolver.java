@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Set;
 import net.runelite.api.MenuAction;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.util.Text;
 
 public final class GeWidgetActionResolver
 {
@@ -135,6 +136,11 @@ public final class GeWidgetActionResolver
 
 	private static String normalize(String value)
 	{
-		return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ENGLISH);
+		if (value == null)
+		{
+			return "";
+		}
+		String clean = Text.removeTags(value);
+		return clean == null ? "" : clean.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ENGLISH);
 	}
 }
