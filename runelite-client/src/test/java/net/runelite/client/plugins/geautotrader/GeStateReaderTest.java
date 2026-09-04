@@ -108,12 +108,37 @@ public class GeStateReaderTest
 		visible(client, WidgetInfo.CHATBOX_FULL_INPUT);
 		when(client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)).thenReturn(-1);
 		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE)).thenReturn(0);
-		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(1);
+		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(99);
 
 		GeObservedState state = new GeStateReader(client).read(true);
 		assertEquals(-1, state.getSetupItemId());
 		assertEquals(GeTradeSide.BUY, state.getSetupSide());
 		assertEquals(GePromptMode.ITEM_SEARCH, state.getPromptMode());
+	}
+
+	@Test
+	public void testUnknownBuySetupWithoutVisibleFullInputStaysUnknown()
+	{
+		Client client = baseClient();
+		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
+		when(client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)).thenReturn(-1);
+		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE)).thenReturn(0);
+		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(99);
+
+		assertEquals(GePromptMode.UNKNOWN, new GeStateReader(client).read(true).getPromptMode());
+	}
+
+	@Test
+	public void testSelectedBuyItemWithVisibleFullInputIsNotForcedToSearch()
+	{
+		Client client = baseClient();
+		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
+		visible(client, WidgetInfo.CHATBOX_FULL_INPUT);
+		when(client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)).thenReturn(1127);
+		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE)).thenReturn(0);
+		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(99);
+
+		assertEquals(GePromptMode.UNKNOWN, new GeStateReader(client).read(true).getPromptMode());
 	}
 
 	@Test
