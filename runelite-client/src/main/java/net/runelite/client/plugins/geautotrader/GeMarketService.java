@@ -25,7 +25,7 @@ public final class GeMarketService implements AutoCloseable
 	static final String MAPPING_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping";
 	static final String LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest";
 	static final String FIVE_MINUTE_URL = "https://prices.runescape.wiki/api/v1/osrs/5m";
-	private static final String USER_AGENT = "RuneLite-GE-AutoTrader-V6/1.0 (private fork)";
+	private static final String USER_AGENT = "RuneLite-GE-AutoTrader-V6/1.1 - github.com/mattbutcher577-bit/runelite";
 
 	interface Fetcher
 	{
@@ -37,6 +37,7 @@ public final class GeMarketService implements AutoCloseable
 	private final Duration minRefreshInterval;
 	private final ExecutorService executor;
 	private final AtomicReference<GeMarketSnapshot> snapshot = new AtomicReference<>();
+	private final AtomicReference<String> lastError = new AtomicReference<>("");
 	private final AtomicBoolean refreshing = new AtomicBoolean();
 
 	public GeMarketService(OkHttpClient httpClient, Gson gson, Duration minRefreshInterval)
@@ -63,6 +64,11 @@ public final class GeMarketService implements AutoCloseable
 		return snapshot.get();
 	}
 
+	public String getLastError()
+	{
+		return lastError.get();
+	}
+
 	public boolean isRefreshing()
 	{
 		return refreshing.get();
@@ -85,10 +91,14 @@ public final class GeMarketService implements AutoCloseable
 		{
 			try
 			{
-				snapshot.set(fetchSnapshot(Instant.now()));
+				GeMarketSnapshot next = fetchSnapshot(Instant.now());
+				snapshot.set(next);
+				lastError.set("");
 			}
-			catch (IOException | RuntimeException ignored)
+			catch (IOException | RuntimeException ex)
 			{
+				String message = ex.getMessage();
+				lastError.set(ex.getClass().getSimpleName() + (message == null || message.isEmpty() ? "" : ": " + message));
 				// Keep the last known-good immutable snapshot. Safety policy decides if it is too stale.
 			}
 			finally
@@ -235,6 +245,7 @@ public final class GeMarketService implements AutoCloseable
 			Request request = new Request.Builder()
 				.url(url)
 				.header("User-Agent", USER_AGENT)
+				.header("Accept", "application/json")
 				.get()
 				.build();
 			try (Response response = client.newCall(request).execute())
