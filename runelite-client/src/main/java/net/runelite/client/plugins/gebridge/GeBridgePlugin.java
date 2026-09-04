@@ -27,11 +27,13 @@ import net.runelite.api.events.GrandExchangeOfferChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
@@ -69,6 +71,9 @@ public class GeBridgePlugin extends Plugin
 
 	@Inject
 	private ClientUI clientUI;
+
+	@Inject
+	private ItemManager itemManager;
 
 	private final AtomicReference<GeBridgeSnapshot> snapshot = new AtomicReference<>();
 	private final AtomicLong lastInputRefreshNanos = new AtomicLong();
@@ -208,6 +213,7 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeInputState inputState = currentInputState(nowEpochMs);
 		GeBridgeSearchState searchState = readSearchState(interfaceState);
 		GeBridgeMouseState mouseState = readMouseState(seq);
+		GeBridgeLiveGeSections liveGeSections = readLiveGeSections(interfaceState);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
@@ -224,7 +230,10 @@ public class GeBridgePlugin extends Plugin
 			safetyState,
 			inputState,
 			searchState,
-			mouseState
+			mouseState,
+			liveGeSections.getGeInput(),
+			liveGeSections.getGeActions(),
+			liveGeSections.getGeInventory()
 		));
 	}
 
@@ -408,6 +417,20 @@ public class GeBridgePlugin extends Plugin
 		return new GeBridgeSearchState(true, bridgeTick, results);
 	}
 
+	private GeBridgeLiveGeSections readLiveGeSections(GeBridgeInterfaceState interfaceState)
+	{
+		return GeBridgeLiveGeSections.read(
+			interfaceState.isGrandExchangeOfferSetupOpen(),
+			client.getVarcIntValue(VarClientID.MESLAYERMODE),
+			client.getWidget(WidgetInfo.CHATBOX_TITLE),
+			client.getWidget(WidgetInfo.CHATBOX_FULL_INPUT),
+			client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER),
+			client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER),
+			client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER),
+			itemManager,
+			bridgeTick);
+	}
+
 	private GeBridgeMouseState readMouseState(long seq)
 	{
 		if (mouseTracker == null)
@@ -441,15 +464,10 @@ public class GeBridgePlugin extends Plugin
 		GeBridgePlayerState playerState,
 		GeBridgeInterfaceState interfaceState)
 	{
-		boolean bridgeReady = client.getGameState() == GameState.LOGGED_IN && loggedInTickSeen && playerState.isPresent();
-		boolean modalBlocker = interfaceState.isBankOpen()
-			|| interfaceState.isWorldMapOpen()
-			|| interfaceState.isDialogOpen()
-			|| interfaceState.isChatboxInputOpen()
-			|| interfaceState.isDraggingWidget();
-		boolean safeForMouseActions = bridgeReady && !modalBlocker;
-		boolean safeForGeMouseActions = safeForMouseActions && interfaceState.isGrandExchangeOpen();
-		return new GeBridgeSafetyState(bridgeReady, modalBlocker, safeForMouseActions, safeForGeMouseActions);
+		boolean bridgeReady = client.getGameState() == GameState.LOGGED_IN
+			&& loggedInTickSeen
+			&& playerState.isPresent();
+		return GeBridgeSafetyPolicy.evaluate(bridgeReady, interfaceState);
 	}
 
 	private boolean isVisible(WidgetInfo widgetInfo)
@@ -528,7 +546,10 @@ public class GeBridgePlugin extends Plugin
 			safetyState,
 			currentInputState(System.currentTimeMillis()),
 			GeBridgeSearchState.closed(),
-			GeBridgeMouseState.unavailable()
+			GeBridgeMouseState.unavailable(),
+			GeBridgeGeInputState.none(bridgeTick),
+			GeBridgeGeActionState.unavailable(bridgeTick),
+			GeBridgeGeInventoryState.closed(bridgeTick)
 		));
 	}
 }
