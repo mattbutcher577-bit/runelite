@@ -8,6 +8,7 @@ import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.WorldType;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
@@ -82,6 +83,28 @@ public class GeStateReaderTest
 		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
 		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(InputType.SEARCH.getType());
 		assertEquals(GePromptMode.ITEM_SEARCH, new GeStateReader(client).read(true).getPromptMode());
+	}
+
+	@Test
+	public void testReadsExactSearchResultItemIdsWhileSearchRemainsOpen()
+	{
+		Client client = baseClient();
+		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
+		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(InputType.SEARCH.getType());
+		Widget container = mock(Widget.class);
+		when(container.isHidden()).thenReturn(false);
+		Widget icon = mock(Widget.class);
+		when(icon.getItemId()).thenReturn(1127);
+		Widget name = mock(Widget.class);
+		when(name.isHidden()).thenReturn(false);
+		when(name.getText()).thenReturn("Adamant platebody");
+		Widget spacer = mock(Widget.class);
+		when(container.getDynamicChildren()).thenReturn(new Widget[]{icon, name, spacer});
+		when(client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS)).thenReturn(container);
+
+		GeObservedState state = new GeStateReader(client).read(true);
+		assertEquals(GePromptMode.ITEM_SEARCH, state.getPromptMode());
+		assertTrue(state.hasSearchResult(1127));
 	}
 
 	@Test
