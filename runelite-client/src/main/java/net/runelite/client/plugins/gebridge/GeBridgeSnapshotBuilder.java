@@ -11,7 +11,7 @@ import net.runelite.api.Item;
 
 final class GeBridgeSnapshotBuilder
 {
-	static final int PROTOCOL = 3;
+	static final int PROTOCOL = 4;
 	static final int COINS_ID = 995;
 	static final int INVENTORY_CAPACITY = 28;
 
@@ -30,7 +30,8 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeInterfaceState interfaceState,
 		GeBridgeGeState geState,
 		GeBridgeSafetyState safetyState,
-		GeBridgeInputState inputState)
+		GeBridgeInputState inputState,
+		GeBridgeSearchState searchState)
 	{
 		List<GeBridgeSlot> slots = new ArrayList<>();
 		if (offers != null)
@@ -83,7 +84,8 @@ final class GeBridgeSnapshotBuilder
 			geState,
 			inventoryState,
 			safetyState,
-			inputState
+			inputState,
+			searchState == null ? GeBridgeSearchState.closed() : searchState
 		);
 	}
 
