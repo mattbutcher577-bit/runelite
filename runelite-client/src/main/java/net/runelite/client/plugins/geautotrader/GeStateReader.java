@@ -2,8 +2,10 @@ package net.runelite.client.plugins.geautotrader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.GrandExchangeOffer;
@@ -11,6 +13,7 @@ import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.WorldType;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
@@ -59,6 +62,7 @@ public final class GeStateReader
 		GeTradeSide setupSide = setupOpen
 			? offerSide(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE))
 			: GeTradeSide.UNKNOWN;
+		GePromptMode promptMode = classifyPrompt(setupOpen);
 
 		return new GeObservedState(
 			loggedIn,
@@ -74,7 +78,8 @@ public final class GeStateReader
 			setupQuantity,
 			setupPrice,
 			setupSide,
-			classifyPrompt(setupOpen));
+			promptMode,
+			readSearchResultItemIds(setupOpen, promptMode));
 	}
 
 	private List<GeObservedSlot> readSlots(GrandExchangeOffer[] offers)
@@ -129,6 +134,34 @@ public final class GeStateReader
 			return GePromptMode.PRICE;
 		}
 		return GePromptMode.UNKNOWN;
+	}
+
+	private Set<Integer> readSearchResultItemIds(boolean setupOpen, GePromptMode promptMode)
+	{
+		Set<Integer> result = new HashSet<>();
+		if (!setupOpen || promptMode != GePromptMode.ITEM_SEARCH)
+		{
+			return result;
+		}
+		Widget container = client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
+		if (container == null || container.isHidden())
+		{
+			return result;
+		}
+		Widget[] children = container.getDynamicChildren();
+		if (children == null)
+		{
+			return result;
+		}
+		for (int offset = 0; offset + 2 < children.length; offset += 3)
+		{
+			Widget icon = children[offset];
+			if (icon != null && !icon.isHidden() && icon.getItemId() > 0)
+			{
+				result.add(icon.getItemId());
+			}
+		}
+		return result;
 	}
 
 	private boolean isVisible(WidgetInfo info)
