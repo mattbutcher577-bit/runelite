@@ -65,7 +65,9 @@ public class GeBridgeSnapshotBuilderTest
 			123456789L,
 			42L,
 			new GeBridgeClientState(
-				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
+				true, 301, Collections.emptyList(), false,
+				773, 535, 104, 232, true,
+				765, 503, 4, 4, 548, 50),
 			new GeBridgePlayerState(true, 3164, 3487, 0),
 			new GeBridgeInterfaceState(true, true, false, false, false, true, false),
 			new GeBridgeGeState(
@@ -85,6 +87,9 @@ public class GeBridgeSnapshotBuilderTest
 		assertEquals(53000, snapshot.getInventoryGp());
 		assertEquals(42L, snapshot.getTick());
 		assertEquals("LOGGED_IN", snapshot.getGameState());
+		assertEquals(104, snapshot.getClient().getCanvasScreenX());
+		assertEquals(232, snapshot.getClient().getCanvasScreenY());
+		assertTrue(snapshot.getClient().isCanvasScreenPositionValid());
 		assertTrue(snapshot.getSearch().isOpen());
 		assertEquals("Feather", snapshot.getSearch().getQuery());
 		assertEquals(1, snapshot.getSearch().getResults().size());
@@ -135,7 +140,9 @@ public class GeBridgeSnapshotBuilderTest
 			1L,
 			1L,
 			new GeBridgeClientState(
-				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
+				true, 301, Collections.emptyList(), false,
+				773, 535, 104, 232, true,
+				765, 503, 4, 4, 548, 50),
 			new GeBridgePlayerState(true, 3164, 3487, 0),
 			new GeBridgeInterfaceState(true, false, false, false, false, false, false),
 			new GeBridgeGeState(
