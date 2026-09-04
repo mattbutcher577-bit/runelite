@@ -112,18 +112,11 @@ public final class GeStateReader
 		{
 			return GePromptMode.NONE;
 		}
+
 		int messageLayerMode = client.getVarcIntValue(VarClientID.MESLAYERMODE);
 		if (messageLayerMode == InputType.SEARCH.getType())
 		{
 			return GePromptMode.ITEM_SEARCH;
-		}
-		if (messageLayerMode == InputType.NONE.getType())
-		{
-			if (setupSide == GeTradeSide.BUY && setupItemId < 0)
-			{
-				return GePromptMode.ITEM_SEARCH;
-			}
-			return GePromptMode.NONE;
 		}
 
 		Widget promptWidget = client.getWidget(WidgetInfo.CHATBOX_TITLE);
@@ -136,6 +129,18 @@ public final class GeStateReader
 		if (PRICE_PROMPT.equals(prompt))
 		{
 			return GePromptMode.PRICE;
+		}
+
+		if (setupSide == GeTradeSide.BUY
+			&& setupItemId < 0
+			&& isVisible(WidgetInfo.CHATBOX_FULL_INPUT))
+		{
+			return GePromptMode.ITEM_SEARCH;
+		}
+
+		if (messageLayerMode == InputType.NONE.getType())
+		{
+			return GePromptMode.NONE;
 		}
 		return GePromptMode.UNKNOWN;
 	}
