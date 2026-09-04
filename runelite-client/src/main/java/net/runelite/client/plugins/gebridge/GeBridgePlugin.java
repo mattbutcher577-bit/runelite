@@ -20,7 +20,9 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GrandExchangeOfferChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
@@ -30,11 +32,12 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
 	name = "GE State Bridge",
-	description = "Publishes read-only Grand Exchange, inventory, interface, client, and input state to localhost",
+	description = "Publishes read-only Grand Exchange, inventory, interface, client, input, and search state to localhost",
 	tags = {"grandexchange", "ge", "bridge", "developer"},
 	enabledByDefault = true,
 	loadInSafeMode = false
@@ -122,8 +125,6 @@ public class GeBridgePlugin extends Plugin
 			return;
 		}
 
-		// RuneLite emits initial EMPTY GE events while login is still settling.
-		// Keep generatedAt=0 until the first full game tick so Python fails closed.
 		loggedInTickSeen = false;
 		bridgeTick = 0L;
 		publishUnavailableSnapshot(state);
@@ -188,6 +189,7 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeGeState geState = readGeState(interfaceState);
 		GeBridgeSafetyState safetyState = readSafetyState(playerState, interfaceState);
 		GeBridgeInputState inputState = currentInputState(nowEpochMs);
+		GeBridgeSearchState searchState = readSearchState(interfaceState);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
@@ -200,7 +202,8 @@ public class GeBridgePlugin extends Plugin
 			interfaceState,
 			geState,
 			safetyState,
-			inputState
+			inputState,
+			searchState
 		));
 	}
 
@@ -236,19 +239,12 @@ public class GeBridgePlugin extends Plugin
 		{
 			return GeBridgePlayerState.unavailable();
 		}
-
 		WorldPoint worldPoint = player.getWorldLocation();
 		if (worldPoint == null)
 		{
 			return GeBridgePlayerState.unavailable();
 		}
-
-		return new GeBridgePlayerState(
-			true,
-			worldPoint.getX(),
-			worldPoint.getY(),
-			worldPoint.getPlane()
-		);
+		return new GeBridgePlayerState(true, worldPoint.getX(), worldPoint.getY(), worldPoint.getPlane());
 	}
 
 	private GeBridgeInterfaceState readInterfaceState()
@@ -281,7 +277,6 @@ public class GeBridgePlugin extends Plugin
 		int offerSetupItemId = interfaceState.isGrandExchangeOfferSetupOpen()
 			? client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)
 			: -1;
-
 		return new GeBridgeGeState(
 			interfaceState.isGrandExchangeOpen(),
 			interfaceState.isGrandExchangeOfferSetupOpen(),
@@ -292,29 +287,72 @@ public class GeBridgePlugin extends Plugin
 		);
 	}
 
+	private GeBridgeSearchState readSearchState(GeBridgeInterfaceState interfaceState)
+	{
+		if (!interfaceState.isGrandExchangeOfferSetupOpen() || !interfaceState.isChatboxInputOpen())
+		{
+			return GeBridgeSearchState.closed();
+		}
+
+		Widget container = client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
+		if (container == null || container.isHidden())
+		{
+			return GeBridgeSearchState.closed();
+		}
+
+		Widget[] children = container.getDynamicChildren();
+		if (children == null || children.length < 3)
+		{
+			return GeBridgeSearchState.closed();
+		}
+
+		List<GeBridgeSearchResult> results = new ArrayList<>();
+		for (int offset = 0, index = 0; offset + 2 < children.length; offset += 3, index++)
+		{
+			Widget icon = children[offset];
+			Widget nameWidget = children[offset + 1];
+			if (nameWidget == null || nameWidget.isHidden())
+			{
+				continue;
+			}
+			String name = Text.removeTags(nameWidget.getText());
+			name = name == null ? "" : name.trim();
+			int itemId = icon == null ? -1 : icon.getItemId();
+			if (name.isEmpty() || itemId <= 0)
+			{
+				continue;
+			}
+			results.add(new GeBridgeSearchResult(
+				index,
+				itemId,
+				name,
+				icon == null ? GeBridgeBounds.invalid() : GeBridgeBounds.from(icon.getBounds()),
+				GeBridgeBounds.from(nameWidget.getBounds())
+			));
+		}
+
+		if (results.isEmpty())
+		{
+			return GeBridgeSearchState.closed();
+		}
+
+		String query = client.getVarcStrValue(VarClientID.MESLAYERINPUT);
+		return new GeBridgeSearchState(true, query == null ? "" : query, results);
+	}
+
 	private GeBridgeSafetyState readSafetyState(
 		GeBridgePlayerState playerState,
 		GeBridgeInterfaceState interfaceState)
 	{
-		boolean bridgeReady =
-			client.getGameState() == GameState.LOGGED_IN
-				&& loggedInTickSeen
-				&& playerState.isPresent();
-		boolean modalBlocker =
-			interfaceState.isBankOpen()
-				|| interfaceState.isWorldMapOpen()
-				|| interfaceState.isDialogOpen()
-				|| interfaceState.isChatboxInputOpen()
-				|| interfaceState.isDraggingWidget();
+		boolean bridgeReady = client.getGameState() == GameState.LOGGED_IN && loggedInTickSeen && playerState.isPresent();
+		boolean modalBlocker = interfaceState.isBankOpen()
+			|| interfaceState.isWorldMapOpen()
+			|| interfaceState.isDialogOpen()
+			|| interfaceState.isChatboxInputOpen()
+			|| interfaceState.isDraggingWidget();
 		boolean safeForMouseActions = bridgeReady && !modalBlocker;
 		boolean safeForGeMouseActions = safeForMouseActions && interfaceState.isGrandExchangeOpen();
-
-		return new GeBridgeSafetyState(
-			bridgeReady,
-			modalBlocker,
-			safeForMouseActions,
-			safeForGeMouseActions
-		);
+		return new GeBridgeSafetyState(bridgeReady, modalBlocker, safeForMouseActions, safeForGeMouseActions);
 	}
 
 	private boolean isVisible(WidgetInfo widgetInfo)
@@ -335,11 +373,7 @@ public class GeBridgePlugin extends Plugin
 
 	private GeBridgeInputState currentInputState(long nowEpochMs)
 	{
-		if (inputTracker == null)
-		{
-			return emptyInputState();
-		}
-		return inputTracker.snapshot(nowEpochMs);
+		return inputTracker == null ? emptyInputState() : inputTracker.snapshot(nowEpochMs);
 	}
 
 	private static GeBridgeInputState emptyInputState()
@@ -380,13 +414,8 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeInterfaceState interfaceState = new GeBridgeInterfaceState(
 			false, false, false, false, false, false, false);
 		GeBridgeGeState geState = new GeBridgeGeState(
-			false,
-			false,
-			-1,
-			GeBridgeBounds.invalid(),
-			GeBridgeBounds.invalid(),
-			GeBridgeBounds.invalid()
-		);
+			false, false, -1,
+			GeBridgeBounds.invalid(), GeBridgeBounds.invalid(), GeBridgeBounds.invalid());
 		GeBridgeSafetyState safetyState = new GeBridgeSafetyState(false, false, false, false);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
@@ -400,7 +429,8 @@ public class GeBridgePlugin extends Plugin
 			interfaceState,
 			geState,
 			safetyState,
-			currentInputState(System.currentTimeMillis())
+			currentInputState(System.currentTimeMillis()),
+			GeBridgeSearchState.closed()
 		));
 	}
 }
