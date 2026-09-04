@@ -16,10 +16,16 @@ import org.junit.Test;
 public class GeBridgeHttpServerTest
 {
 	@Test
-	public void testStateEndpointReturnsProtocolV3JsonAndRejectsWrites() throws Exception
+	public void testStateEndpointReturnsProtocolV4JsonAndRejectsWrites() throws Exception
 	{
+		GeBridgeSearchResult result = new GeBridgeSearchResult(
+			0,
+			314,
+			"Feather",
+			new GeBridgeBounds(40, 410, 32, 32, true),
+			new GeBridgeBounds(80, 410, 150, 24, true));
 		GeBridgeSnapshot snapshot = new GeBridgeSnapshot(
-			3,
+			4,
 			123L,
 			42L,
 			"LOGGED_IN",
@@ -29,20 +35,21 @@ public class GeBridgeHttpServerTest
 			new GeBridgeClientState(
 				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
 			new GeBridgePlayerState(true, 3164, 3487, 0),
-			new GeBridgeInterfaceState(true, false, false, false, false, false, false),
+			new GeBridgeInterfaceState(true, true, false, false, false, true, false),
 			new GeBridgeGeState(
 				true,
-				false,
+				true,
 				-1,
 				new GeBridgeBounds(20, 20, 500, 360, true),
-				GeBridgeBounds.invalid(),
+				new GeBridgeBounds(40, 80, 440, 280, true),
 				new GeBridgeBounds(550, 200, 180, 250, true)
 			),
 			new GeBridgeInventoryState(28, 1, 27),
-			new GeBridgeSafetyState(true, false, true, true),
+			new GeBridgeSafetyState(true, true, false, false),
 			new GeBridgeInputState(
 				120L, 110L, 120L, 115L, 118L, 100L, 90L,
-				400, 250, true, 0, 1, -1, "SHIFT", 3L)
+				400, 250, true, 0, 1, -1, "SHIFT", 3L),
+			new GeBridgeSearchState(true, "Feather", Collections.singletonList(result))
 		);
 		AtomicReference<GeBridgeSnapshot> ref = new AtomicReference<>(snapshot);
 		GeBridgeHttpServer server = new GeBridgeHttpServer(new Gson(), ref::get, 0);
@@ -59,12 +66,13 @@ public class GeBridgeHttpServerTest
 			{
 				body = reader.readLine();
 			}
-			assertTrue(body.contains("\"protocol\":3"));
+			assertTrue(body.contains("\"protocol\":4"));
 			assertTrue(body.contains("\"gameState\":\"LOGGED_IN\""));
-			assertTrue(body.contains("\"canvasWidth\":773"));
-			assertTrue(body.contains("\"safeForGeMouseActions\":true"));
 			assertTrue(body.contains("\"mouseX\":400"));
-			assertTrue(body.contains("\"lastControlKey\":\"SHIFT\""));
+			assertTrue(body.contains("\"search\":{"));
+			assertTrue(body.contains("\"query\":\"Feather\""));
+			assertTrue(body.contains("\"itemId\":314"));
+			assertTrue(body.contains("\"name\":\"Feather\""));
 			assertFalse(body.contains("typedText"));
 			assertFalse(body.contains("keyChar"));
 
