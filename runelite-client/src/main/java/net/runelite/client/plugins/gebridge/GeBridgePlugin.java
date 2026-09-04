@@ -36,12 +36,13 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientUI;
 import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
 	name = "GE State Bridge",
-	description = "Publishes read-only Grand Exchange, inventory, interface, client, input, and search state to localhost",
+	description = "Publishes read-only Grand Exchange, inventory, interface, client, input, search, and mouse state to localhost",
 	tags = {"grandexchange", "ge", "bridge", "developer"},
 	enabledByDefault = true,
 	loadInSafeMode = false
@@ -66,10 +67,14 @@ public class GeBridgePlugin extends Plugin
 	@Inject
 	private KeyManager keyManager;
 
+	@Inject
+	private ClientUI clientUI;
+
 	private final AtomicReference<GeBridgeSnapshot> snapshot = new AtomicReference<>();
 	private final AtomicLong lastInputRefreshNanos = new AtomicLong();
 	private GeBridgeHttpServer httpServer;
 	private GeBridgeInputTracker inputTracker;
+	private GeBridgeMouseTracker mouseTracker;
 	private boolean loggedInTickSeen;
 	private long bridgeTick;
 	private long snapshotSeq;
@@ -84,8 +89,11 @@ public class GeBridgePlugin extends Plugin
 		bridgeInstanceId = UUID.randomUUID().toString();
 		lastInputRefreshNanos.set(0L);
 		inputTracker = new GeBridgeInputTracker(this::requestInputRefresh);
+		mouseTracker = new GeBridgeMouseTracker(this::requestInputRefresh);
 		mouseManager.registerMouseListener(inputTracker);
 		mouseManager.registerMouseWheelListener(inputTracker);
+		mouseManager.registerMouseListener(mouseTracker);
+		mouseManager.registerMouseWheelListener(mouseTracker);
 		keyManager.registerKeyListener(inputTracker);
 
 		publishUnavailableSnapshot(client.getGameState());
@@ -97,7 +105,7 @@ public class GeBridgePlugin extends Plugin
 		}
 		catch (IOException ex)
 		{
-			unregisterInputTracker();
+			unregisterTrackers();
 			log.error("Unable to bind GE state bridge on 127.0.0.1:{}", PORT, ex);
 			throw ex;
 		}
@@ -108,7 +116,7 @@ public class GeBridgePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		unregisterInputTracker();
+		unregisterTrackers();
 		if (httpServer != null)
 		{
 			httpServer.stop();
@@ -190,6 +198,7 @@ public class GeBridgePlugin extends Plugin
 		ItemContainer inventoryContainer = client.getItemContainer(InventoryID.INV);
 		Item[] inventory = inventoryContainer == null ? new Item[0] : inventoryContainer.getItems();
 		long nowEpochMs = System.currentTimeMillis();
+		long seq = nextSnapshotSeq();
 
 		GeBridgeClientState clientState = readClientState(gameState);
 		GeBridgePlayerState playerState = readPlayerState();
@@ -198,6 +207,7 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeSafetyState safetyState = readSafetyState(playerState, interfaceState);
 		GeBridgeInputState inputState = currentInputState(nowEpochMs);
 		GeBridgeSearchState searchState = readSearchState(interfaceState);
+		GeBridgeMouseState mouseState = readMouseState(seq);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
@@ -206,14 +216,15 @@ public class GeBridgePlugin extends Plugin
 			nowEpochMs,
 			bridgeTick,
 			bridgeInstanceId,
-			nextSnapshotSeq(),
+			seq,
 			clientState,
 			playerState,
 			interfaceState,
 			geState,
 			safetyState,
 			inputState,
-			searchState
+			searchState,
+			mouseState
 		));
 	}
 
@@ -397,6 +408,35 @@ public class GeBridgePlugin extends Plugin
 		return new GeBridgeSearchState(true, bridgeTick, results);
 	}
 
+	private GeBridgeMouseState readMouseState(long seq)
+	{
+		if (mouseTracker == null)
+		{
+			return GeBridgeMouseState.unavailable();
+		}
+
+		net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+		int x = mouse == null ? -1 : mouse.getX();
+		int y = mouse == null ? -1 : mouse.getY();
+		boolean inside = x >= 0 && y >= 0 && x < client.getCanvasWidth() && y < client.getCanvasHeight();
+		Canvas canvas = client.getCanvas();
+		boolean canvasFocused = canvas != null && canvas.isFocusOwner();
+		boolean clientWindowFocused = clientUI != null && clientUI.isFocused();
+
+		return mouseTracker.snapshot(
+			bridgeTick,
+			seq,
+			x,
+			y,
+			inside,
+			client.getMouseCurrentButton(),
+			client.isDraggingWidget(),
+			client.getMouseIdleTicks(),
+			client.getMouseLastPressedMillis(),
+			canvasFocused,
+			clientWindowFocused);
+	}
+
 	private GeBridgeSafetyState readSafetyState(
 		GeBridgePlayerState playerState,
 		GeBridgeInterfaceState interfaceState)
@@ -440,16 +480,21 @@ public class GeBridgePlugin extends Plugin
 			-1, -1, false, 0, 0, 0, "", -1L);
 	}
 
-	private void unregisterInputTracker()
+	private void unregisterTrackers()
 	{
-		if (inputTracker == null)
+		if (inputTracker != null)
 		{
-			return;
+			mouseManager.unregisterMouseListener(inputTracker);
+			mouseManager.unregisterMouseWheelListener(inputTracker);
+			keyManager.unregisterKeyListener(inputTracker);
+			inputTracker = null;
 		}
-		mouseManager.unregisterMouseListener(inputTracker);
-		mouseManager.unregisterMouseWheelListener(inputTracker);
-		keyManager.unregisterKeyListener(inputTracker);
-		inputTracker = null;
+		if (mouseTracker != null)
+		{
+			mouseManager.unregisterMouseListener(mouseTracker);
+			mouseManager.unregisterMouseWheelListener(mouseTracker);
+			mouseTracker = null;
+		}
 	}
 
 	private long nextSnapshotSeq()
@@ -466,6 +511,7 @@ public class GeBridgePlugin extends Plugin
 			false, false, -1,
 			GeBridgeBounds.invalid(), GeBridgeBounds.invalid(), GeBridgeBounds.invalid());
 		GeBridgeSafetyState safetyState = new GeBridgeSafetyState(false, false, false, false);
+		long seq = nextSnapshotSeq();
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
@@ -474,14 +520,15 @@ public class GeBridgePlugin extends Plugin
 			0L,
 			bridgeTick,
 			bridgeInstanceId,
-			nextSnapshotSeq(),
+			seq,
 			clientState,
 			GeBridgePlayerState.unavailable(),
 			interfaceState,
 			geState,
 			safetyState,
 			currentInputState(System.currentTimeMillis()),
-			GeBridgeSearchState.closed()
+			GeBridgeSearchState.closed(),
+			GeBridgeMouseState.unavailable()
 		));
 	}
 }
