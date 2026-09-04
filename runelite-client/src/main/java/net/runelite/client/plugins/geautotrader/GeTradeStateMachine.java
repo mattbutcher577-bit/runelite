@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 public final class GeTradeStateMachine
 {
 	private static final Duration BUY_TIMEOUT = Duration.ofMinutes(20);
+	private static final Duration UI_PROOF_TIMEOUT = Duration.ofSeconds(10);
 
 	private final GeAutoTraderConfig config;
 	private final GeLimitLedger limitLedger;
@@ -62,7 +63,13 @@ public final class GeTradeStateMachine
 
 		for (int slot = 1; slot <= 3; slot++)
 		{
-			GePlannedAction action = step(contexts.get(slot), state, now);
+			SlotContext context = contexts.get(slot);
+			GeTradePhase beforePhase = context.phase;
+			GePlannedAction action = step(context, state, now);
+			if (context.phase != beforePhase)
+			{
+				context.phaseEnteredAt = now;
+			}
 			if (action.getType() != GePlannedActionType.NONE)
 			{
 				lastReason = GeReasonCode.OK;
@@ -160,6 +167,18 @@ public final class GeTradeStateMachine
 		}
 	}
 
+	private static boolean isUiProofPhase(GeTradePhase phase)
+	{
+		return isSetupWorkflowPhase(phase);
+	}
+
+	private static boolean isUiProofTimedOut(SlotContext context, Instant now)
+	{
+		return isUiProofPhase(context.phase)
+			&& context.phaseEnteredAt != null
+			&& now.isAfter(context.phaseEnteredAt.plus(UI_PROOF_TIMEOUT));
+	}
+
 	private boolean anotherSetupWorkflowInProgress(int slot)
 	{
 		for (SlotContext other : contexts.values())
@@ -178,6 +197,11 @@ public final class GeTradeStateMachine
 		if (observed == null)
 		{
 			lastReason = GeReasonCode.SLOT_IDENTITY_CHANGED;
+			return GePlannedAction.none();
+		}
+		if (isUiProofTimedOut(context, now))
+		{
+			lastReason = GeReasonCode.UI_STATE_TIMEOUT;
 			return GePlannedAction.none();
 		}
 
@@ -577,6 +601,7 @@ public final class GeTradeStateMachine
 	{
 		private final int slot;
 		private GeTradePhase phase = GeTradePhase.IDLE;
+		private Instant phaseEnteredAt;
 		private GeCandidate candidate;
 		private String obligationId = "";
 		private GeTradeSide side = GeTradeSide.UNKNOWN;
@@ -592,6 +617,7 @@ public final class GeTradeStateMachine
 		private void reset()
 		{
 			phase = GeTradePhase.IDLE;
+			phaseEnteredAt = null;
 			candidate = null;
 			obligationId = "";
 			side = GeTradeSide.UNKNOWN;
