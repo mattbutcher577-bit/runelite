@@ -86,6 +86,8 @@ public class GeBridgePlugin extends Plugin
 	private GeBridgeInputTracker inputTracker;
 	private GeBridgeMouseTracker mouseTracker;
 	private boolean loggedInTickSeen;
+	private int loggedInTicks;
+	private int lastLoginTick = -1;
 	private long bridgeTick;
 	private long snapshotSeq;
 	private String bridgeInstanceId = "";
@@ -94,6 +96,8 @@ public class GeBridgePlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		loggedInTickSeen = false;
+		loggedInTicks = 0;
+		lastLoginTick = client.getGameState() == GameState.LOGGED_IN ? client.getTickCount() : -1;
 		bridgeTick = 0L;
 		snapshotSeq = 0L;
 		bridgeInstanceId = UUID.randomUUID().toString();
@@ -133,6 +137,8 @@ public class GeBridgePlugin extends Plugin
 			httpServer = null;
 		}
 		loggedInTickSeen = false;
+		loggedInTicks = 0;
+		lastLoginTick = -1;
 		bridgeTick = 0L;
 		lastInputRefreshNanos.set(0L);
 		publishUnavailableSnapshot(GameState.UNKNOWN);
@@ -143,16 +149,18 @@ public class GeBridgePlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
+		loggedInTickSeen = false;
+		loggedInTicks = 0;
+		bridgeTick = 0L;
+
 		if (state != GameState.LOGGED_IN)
 		{
-			loggedInTickSeen = false;
-			bridgeTick = 0L;
+			lastLoginTick = -1;
 			publishUnavailableSnapshot(state);
 			return;
 		}
 
-		loggedInTickSeen = false;
-		bridgeTick = 0L;
+		lastLoginTick = client.getTickCount();
 		publishUnavailableSnapshot(state);
 	}
 
@@ -162,6 +170,7 @@ public class GeBridgePlugin extends Plugin
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
 			loggedInTickSeen = true;
+			loggedInTicks++;
 			bridgeTick++;
 			refreshSnapshotIfReady();
 		}
@@ -325,7 +334,10 @@ public class GeBridgePlugin extends Plugin
 			client.getViewportXOffset(),
 			client.getViewportYOffset(),
 			client.getTopLevelInterfaceId(),
-			client.getFPS()
+			client.getFPS(),
+			client.getTickCount(),
+			lastLoginTick,
+			GeBridgeLoginSettlePolicy.isSettled(loggedInTicks)
 		);
 	}
 
@@ -513,6 +525,7 @@ public class GeBridgePlugin extends Plugin
 	{
 		boolean bridgeReady = client.getGameState() == GameState.LOGGED_IN
 			&& loggedInTickSeen
+			&& GeBridgeLoginSettlePolicy.isSettled(loggedInTicks)
 			&& playerState.isPresent();
 		return GeBridgeSafetyPolicy.evaluate(bridgeReady, interfaceState);
 	}
