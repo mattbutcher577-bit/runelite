@@ -28,6 +28,12 @@ final class GeBridgeGeInputClassifier
 		{
 			return "ITEM_SEARCH";
 		}
+		if (messageLayerMode == InputType.NONE.getType())
+		{
+			return fullInputVisible && buySetup && setupItemId < 0
+				? "ITEM_SEARCH"
+				: "NONE";
+		}
 		if (BUY_QUANTITY_PROMPT.equals(prompt) || SELL_QUANTITY_PROMPT.equals(prompt))
 		{
 			return "QUANTITY";
@@ -39,10 +45,6 @@ final class GeBridgeGeInputClassifier
 		if (fullInputVisible && buySetup && setupItemId < 0)
 		{
 			return "ITEM_SEARCH";
-		}
-		if (messageLayerMode == InputType.NONE.getType())
-		{
-			return "NONE";
 		}
 		return "UNKNOWN";
 	}
