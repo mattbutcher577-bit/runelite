@@ -1,49 +1,61 @@
-# RuneLite GE State Bridge
+# RuneLite GE State Bridge v2
 
-This companion client reads the custom RuneLite `GE State Bridge` plugin at:
+The custom RuneLite `GE State Bridge` exposes a read-only protocol-v2 snapshot at:
 
 `http://127.0.0.1:17654/state`
 
-## What it replaces
+## Authoritative state
 
-When the bridge is healthy, use RuneLite data instead of OCR/pixel reads for:
+When the bridge is healthy, Python can use RuneLite directly for:
 
-- GE slot state
-- GREEN / ORANGE / RED / EMPTY compatibility state
-- exact offer item ID, price and quantities
-- inventory item IDs and quantities
-- inventory GP
-- completed/cancelled collect readiness
+- exact GE slot states and collect readiness
+- offer item IDs, prices, quantities, and spend
+- exact inventory item quantities and GP
+- occupied/free inventory slots
+- logged-in readiness and bridge tick
+- current world and world type / members status
+- local-player world X/Y/plane
+- actual RuneLite canvas and viewport dimensions
+- GE open / offer-setup state
+- GE window, setup, and inventory widget bounds
+- bank, world map, dialog, chat-input, and widget-drag blockers
+- advisory `safeForMouseActions` and `safeForGeMouseActions` flags
+
+## Why v2 matters for V981
+
+The old V981 preflight can reject a RuneLite window when the outer client area is wider than the game canvas, for example when the RuneLite sidebar is visible. Protocol v2 reports the actual RuneLite game canvas directly, so Python can validate the game surface without forcing the entire application window to `773x535`.
 
 ## Safety rule
 
-A missing, stale, malformed, logged-out, or incompatible bridge response returns no trusted snapshot. The bot must treat that as `UNKNOWN/WAIT`, never as `EMPTY`.
+A missing, stale, malformed, logged-out, not-ready, or incompatible bridge response returns no trusted snapshot. Python must treat that as `UNKNOWN/WAIT`, never as `EMPTY`.
 
-## V981 integration
+Modal blockers also fail closed for mouse actions. Widget bounds must be valid before Python trusts them for GE geometry.
 
-Import `V981RuneLiteStateAdapter` from `v981_bridge_adapter.py`, refresh it once per state loop, and use `physical_status(slot_index)` and `inventory_gp()` as the authoritative readers.
+The RuneLite plugin is still strictly read-only. It does not click, type, invoke menu actions, place offers, cancel offers, or collect offers.
 
-Keep existing OCR only as optional diagnostic output. Do not let OCR override a valid bridge snapshot.
+## Python client
 
-The RuneLite plugin is read-only. It does not click, type, place, cancel, or collect offers.
+`runelite_bridge.py` parses protocol v2 into immutable dataclasses. `v981_bridge_adapter.py` exposes compatibility helpers for exact slot state and GP plus v2 readiness, canvas, GE bounds, world/player, inventory-slot, and modal-blocker state.
 
-## Local Python tests
+Run the smoke check:
 
-From this directory:
+```text
+python bridge_smoke_check.py
+```
+
+Run tests:
 
 ```text
 python -m unittest -v test_runelite_bridge.py
 ```
 
-`requests` is already included in the existing V981 installer dependencies.
-
 ## RuneLite build
 
-From the RuneLite repository root on Windows:
+From the RuneLite repository root on Windows, on branch `feat/runelite-ge-bridge-v2`:
 
 ```text
 gradlew.bat :client:test --tests net.runelite.client.plugins.gebridge.*
 gradlew.bat :client:shadowJar
 ```
 
-Start the custom RuneLite build and ensure the `GE State Bridge` plugin is enabled. A valid logged-in state should then be available on `/state`.
+Start that custom RuneLite build and enable `GE State Bridge`. A fresh logged-in protocol-v2 snapshot is then served from `/state`.
