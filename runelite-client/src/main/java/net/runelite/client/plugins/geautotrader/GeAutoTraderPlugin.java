@@ -202,6 +202,38 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		return lastReason == GeReasonCode.OK ? "RUNNING" : "PAUSED";
 	}
 
+	String getMarketStatusText()
+	{
+		if (marketService == null)
+		{
+			return "OFF";
+		}
+		GeMarketSnapshot snapshot = marketService.snapshot();
+		if (snapshot != null)
+		{
+			return "READY " + snapshot.getItems().size();
+		}
+		if (!marketService.getLastError().isEmpty())
+		{
+			return "ERROR";
+		}
+		return marketService.isRefreshing() ? "LOADING" : "WAITING";
+	}
+
+	String getMarketErrorText()
+	{
+		if (marketService == null)
+		{
+			return "";
+		}
+		String value = marketService.getLastError();
+		if (value.length() > 72)
+		{
+			return value.substring(0, 69) + "...";
+		}
+		return value;
+	}
+
 	GeReasonCode getLastReason()
 	{
 		return lastReason;
