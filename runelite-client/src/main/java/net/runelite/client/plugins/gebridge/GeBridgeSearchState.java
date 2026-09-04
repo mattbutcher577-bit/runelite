@@ -11,6 +11,13 @@ class GeBridgeSearchState
 	long updatedTick;
 	List<GeBridgeSearchResult> results;
 
+	GeBridgeSearchState(boolean open, long updatedTick, List<GeBridgeSearchResult> results)
+	{
+		this.open = open;
+		this.updatedTick = updatedTick;
+		this.results = results == null ? Collections.emptyList() : results;
+	}
+
 	GeBridgeSearchState(boolean open, String ignoredLegacyQuery, List<GeBridgeSearchResult> results)
 	{
 		this(open, -1L, results);
