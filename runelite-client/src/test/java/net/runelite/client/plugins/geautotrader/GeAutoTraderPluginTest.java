@@ -2,7 +2,10 @@ package net.runelite.client.plugins.geautotrader;
 
 import java.awt.Canvas;
 import java.awt.event.KeyEvent;
+import java.lang.reflect.Field;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import net.runelite.client.events.ConfigChanged;
@@ -54,6 +57,39 @@ public class GeAutoTraderPluginTest
 		plugin.onConfigChanged(enabledChange("true"));
 		assertFalse(plugin.isRestartRequested());
 		assertTrue(plugin.isStopped());
+	}
+
+	@Test
+	public void testNoOpportunityIsReportedAsRunningScanState() throws Exception
+	{
+		GeReasonCode noOpportunity = null;
+		for (GeReasonCode reason : GeReasonCode.values())
+		{
+			if ("NO_OPPORTUNITY".equals(reason.name()))
+			{
+				noOpportunity = reason;
+				break;
+			}
+		}
+		assertNotNull("NO_OPPORTUNITY reason must exist", noOpportunity);
+
+		GeAutoTraderPlugin plugin = new GeAutoTraderPlugin();
+		Field configField = GeAutoTraderPlugin.class.getDeclaredField("config");
+		configField.setAccessible(true);
+		configField.set(plugin, enabledConfig());
+		Field reasonField = GeAutoTraderPlugin.class.getDeclaredField("lastReason");
+		reasonField.setAccessible(true);
+		reasonField.set(plugin, noOpportunity);
+
+		assertEquals("RUNNING", plugin.getStatusText());
+	}
+
+	private static GeAutoTraderConfig enabledConfig()
+	{
+		return new GeAutoTraderConfig()
+		{
+			@Override public boolean enabled() { return true; }
+		};
 	}
 
 	private static ConfigChanged enabledChange(String value)
