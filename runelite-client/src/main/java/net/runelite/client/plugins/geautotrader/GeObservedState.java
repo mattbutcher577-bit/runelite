@@ -2,7 +2,9 @@ package net.runelite.client.plugins.geautotrader;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class GeObservedState
 {
@@ -11,12 +13,15 @@ public final class GeObservedState
 	private final boolean loginSettled;
 	private final boolean geOpen;
 	private final boolean blockerActive;
+	private final int world;
 	private final long gp;
 	private final List<GeObservedSlot> slots;
+	private final Map<Integer, Integer> inventoryCounts;
 	private final int setupItemId;
 	private final int setupQuantity;
 	private final int setupPrice;
 	private final GeTradeSide setupSide;
+	private final GePromptMode promptMode;
 
 	public GeObservedState(
 		boolean loggedIn,
@@ -31,17 +36,54 @@ public final class GeObservedState
 		int setupPrice,
 		GeTradeSide setupSide)
 	{
+		this(
+			loggedIn,
+			membersWorld,
+			loginSettled,
+			geOpen,
+			blockerActive,
+			-1,
+			gp,
+			slots,
+			Collections.emptyMap(),
+			setupItemId,
+			setupQuantity,
+			setupPrice,
+			setupSide,
+			GePromptMode.UNKNOWN);
+	}
+
+	public GeObservedState(
+		boolean loggedIn,
+		boolean membersWorld,
+		boolean loginSettled,
+		boolean geOpen,
+		boolean blockerActive,
+		int world,
+		long gp,
+		List<GeObservedSlot> slots,
+		Map<Integer, Integer> inventoryCounts,
+		int setupItemId,
+		int setupQuantity,
+		int setupPrice,
+		GeTradeSide setupSide,
+		GePromptMode promptMode)
+	{
 		this.loggedIn = loggedIn;
 		this.membersWorld = membersWorld;
 		this.loginSettled = loginSettled;
 		this.geOpen = geOpen;
 		this.blockerActive = blockerActive;
+		this.world = world;
 		this.gp = gp;
 		this.slots = Collections.unmodifiableList(new ArrayList<>(slots == null ? Collections.emptyList() : slots));
+		this.inventoryCounts = Collections.unmodifiableMap(new HashMap<>(
+			inventoryCounts == null ? Collections.emptyMap() : inventoryCounts));
 		this.setupItemId = setupItemId;
 		this.setupQuantity = setupQuantity;
 		this.setupPrice = setupPrice;
 		this.setupSide = setupSide == null ? GeTradeSide.UNKNOWN : setupSide;
+		this.promptMode = promptMode == null ? GePromptMode.UNKNOWN : promptMode;
 	}
 
 	public boolean isLoggedIn()
@@ -69,6 +111,11 @@ public final class GeObservedState
 		return blockerActive;
 	}
 
+	public int getWorld()
+	{
+		return world;
+	}
+
 	public long getGp()
 	{
 		return gp;
@@ -77,6 +124,17 @@ public final class GeObservedState
 	public List<GeObservedSlot> getSlots()
 	{
 		return slots;
+	}
+
+	public Map<Integer, Integer> getInventoryCounts()
+	{
+		return inventoryCounts;
+	}
+
+	public int getInventoryQuantity(int itemId)
+	{
+		Integer value = inventoryCounts.get(itemId);
+		return value == null ? 0 : value;
 	}
 
 	public int getSetupItemId()
@@ -97,5 +155,10 @@ public final class GeObservedState
 	public GeTradeSide getSetupSide()
 	{
 		return setupSide;
+	}
+
+	public GePromptMode getPromptMode()
+	{
+		return promptMode;
 	}
 }
