@@ -3,9 +3,10 @@ package net.runelite.client.plugins.gebridge;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collections;
+import java.util.EnumSet;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.WorldType;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 import static org.mockito.Mockito.mock;
@@ -19,7 +20,7 @@ public class GeBridgePluginUnavailableSnapshotTest
 	public void testUnavailableSnapshotDoesNotReadTopLevelInterfaceBeforeClientIsReady() throws Exception
 	{
 		Client client = mock(Client.class);
-		when(client.getWorldType()).thenReturn(Collections.emptySet());
+		when(client.getWorldType()).thenReturn(EnumSet.noneOf(WorldType.class));
 		when(client.getTopLevelInterfaceId()).thenThrow(new NullPointerException("client not initialized"));
 
 		GeBridgePlugin plugin = new GeBridgePlugin();
