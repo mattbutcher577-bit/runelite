@@ -16,7 +16,7 @@ import org.junit.Test;
 public class GeBridgeHttpServerTest
 {
 	@Test
-	public void testStateEndpointReturnsProtocolV5JsonAndRejectsWrites() throws Exception
+	public void testStateEndpointReturnsCompleteProtocolV5JsonAndRejectsWrites() throws Exception
 	{
 		GeBridgeSearchResult result = new GeBridgeSearchResult(
 			0,
@@ -24,6 +24,8 @@ public class GeBridgeHttpServerTest
 			"Feather",
 			new GeBridgeBounds(40, 410, 32, 32, true),
 			new GeBridgeBounds(80, 410, 150, 24, true));
+
+		GeBridgeBounds valid = new GeBridgeBounds(20, 20, 100, 30, true);
 		GeBridgeSnapshot snapshot = new GeBridgeSnapshot(
 			5,
 			123L,
@@ -44,19 +46,23 @@ public class GeBridgeHttpServerTest
 			new GeBridgeGeState(
 				true,
 				true,
-				-1,
+				314,
 				new GeBridgeBounds(20, 20, 500, 360, true),
 				new GeBridgeBounds(40, 80, 440, 280, true),
-				new GeBridgeBounds(550, 200, 180, 250, true)
-			),
+				new GeBridgeBounds(550, 200, 180, 250, true)),
 			new GeBridgeInventoryState(28, 1, 27),
-			new GeBridgeSafetyState(true, true, false, false),
+			new GeBridgeSafetyState(true, false, true, true),
 			new GeBridgeInputState(
 				120L, 110L, 120L, 115L, 118L, 100L, 90L,
 				400, 250, true, 0, 1, -1, "SHIFT", 3L),
 			new GeBridgeSearchState(true, 42L, Collections.singletonList(result)),
-			GeBridgeMouseState.unavailable()
-		);
+			GeBridgeMouseState.unavailable(),
+			new GeBridgeGeInputState("ITEM_SEARCH", 42L, valid, valid),
+			new GeBridgeGeActionState(
+				42L, valid, valid, valid, valid, valid,
+				valid, valid, valid, valid, Collections.emptyList()),
+			new GeBridgeGeInventoryState(true, 42L, Collections.emptyList()));
+
 		AtomicReference<GeBridgeSnapshot> ref = new AtomicReference<>(snapshot);
 		GeBridgeHttpServer server = new GeBridgeHttpServer(new Gson(), ref::get, 0);
 		server.start();
@@ -72,6 +78,7 @@ public class GeBridgeHttpServerTest
 			{
 				body = reader.readLine();
 			}
+
 			assertTrue(body.contains("\"protocol\":5"));
 			assertTrue(body.contains("\"bridgeInstanceId\":\"bridge-test-instance\""));
 			assertTrue(body.contains("\"snapshotSeq\":9"));
@@ -84,6 +91,11 @@ public class GeBridgeHttpServerTest
 			assertTrue(body.contains("\"updatedTick\":42"));
 			assertTrue(body.contains("\"itemId\":314"));
 			assertTrue(body.contains("\"name\":\"Feather\""));
+			assertTrue(body.contains("\"geInput\":{"));
+			assertTrue(body.contains("\"mode\":\"ITEM_SEARCH\""));
+			assertTrue(body.contains("\"geActions\":{"));
+			assertTrue(body.contains("\"geInventory\":{"));
+			assertTrue(body.contains("\"mouse\":{"));
 			assertFalse(body.contains("\"query\""));
 			assertFalse(body.contains("typedText"));
 			assertFalse(body.contains("keyChar"));
