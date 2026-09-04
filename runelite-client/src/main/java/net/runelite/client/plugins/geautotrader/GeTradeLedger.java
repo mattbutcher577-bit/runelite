@@ -50,6 +50,14 @@ public final class GeTradeLedger
 		require(id).incrementAbortCount();
 	}
 
+	public void remove(String id)
+	{
+		if (id != null)
+		{
+			obligations.remove(id);
+		}
+	}
+
 	public long reservedGp()
 	{
 		long total = 0L;
