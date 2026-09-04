@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.geautotrader;
 
 import java.awt.Canvas;
+import java.util.Arrays;
 import java.util.Collections;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
@@ -67,6 +68,32 @@ public class GeActionDispatcherTest
 
 		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(openBuyAction(), emptySlotState()));
 		verify(client).menuAction(7, 54321, MenuAction.CC_OP, 1, -1, liveAction, "");
+	}
+
+	@Test
+	public void testOpenBuyIgnoresGenericBuyActionOnOccupiedSlot()
+	{
+		Client client = mock(Client.class);
+		Widget window = mock(Widget.class);
+		Widget occupiedBuyAlias = actionWidget("Buy", 1, 50001, -1, "Steel dagger");
+		Widget slot2Buy = actionWidget("Create Buy offer", 2, 50002, -1, "");
+		Widget slot3Buy = actionWidget("Create Buy offer", 3, 50003, -1, "");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getChildren()).thenReturn(new Widget[]{occupiedBuyAlias, slot2Buy, slot3Buy});
+
+		GeObservedState state = new GeObservedState(
+			true, false, true, true, false, 2_035_687L,
+			Arrays.asList(
+				new GeObservedSlot(1, "BUYING", 1207, 125, 0, 5),
+				new GeObservedSlot(2, "EMPTY", -1, 0, 0, 0),
+				new GeObservedSlot(3, "EMPTY", -1, 0, 0, 0)),
+			-1, 0, 0, GeTradeSide.UNKNOWN);
+		GePlannedAction action = GePlannedAction.of(
+			GePlannedActionType.OPEN_BUY, 2, 325, "Sardine", 100, 17, "v6-buy-2");
+
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, state));
+		verify(client).menuAction(2, 50002, MenuAction.CC_OP, 1, -1, "Create Buy offer", "");
 	}
 
 	@Test
