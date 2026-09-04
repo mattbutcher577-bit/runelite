@@ -281,7 +281,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		{
 			return "PAUSED";
 		}
-		return lastReason == GeReasonCode.OK ? "RUNNING" : "PAUSED";
+		return lastReason == GeReasonCode.OK || lastReason == GeReasonCode.NO_OPPORTUNITY
+			? "RUNNING" : "PAUSED";
 	}
 
 	String getMarketStatusText()
