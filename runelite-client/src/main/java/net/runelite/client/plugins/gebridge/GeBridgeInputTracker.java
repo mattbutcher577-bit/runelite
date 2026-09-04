@@ -13,6 +13,7 @@ import net.runelite.client.input.MouseWheelListener;
 
 final class GeBridgeInputTracker implements MouseListener, MouseWheelListener, KeyListener
 {
+	private final Runnable onInput;
 	private final AtomicLong lastInputEpochMs = new AtomicLong();
 	private final AtomicLong lastMouseMoveEpochMs = new AtomicLong();
 	private final AtomicLong lastMouseClickEpochMs = new AtomicLong();
@@ -27,6 +28,16 @@ final class GeBridgeInputTracker implements MouseListener, MouseWheelListener, K
 	private final AtomicInteger lastMouseButton = new AtomicInteger();
 	private final AtomicInteger lastWheelRotation = new AtomicInteger();
 	private final AtomicReference<String> lastControlKey = new AtomicReference<>("");
+
+	GeBridgeInputTracker()
+	{
+		this(() -> { });
+	}
+
+	GeBridgeInputTracker(Runnable onInput)
+	{
+		this.onInput = onInput == null ? () -> { } : onInput;
+	}
 
 	GeBridgeInputState snapshot(long nowEpochMs)
 	{
@@ -177,6 +188,7 @@ final class GeBridgeInputTracker implements MouseListener, MouseWheelListener, K
 	private void touch(long when)
 	{
 		lastInputEpochMs.accumulateAndGet(when, Math::max);
+		onInput.run();
 	}
 
 	private static int buttonMask(int button)
