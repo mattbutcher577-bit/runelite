@@ -26,6 +26,9 @@ class GeBridgeSnapshot
 	GeBridgeInputState input;
 	GeBridgeSearchState search;
 	GeBridgeMouseState mouse;
+	GeBridgeGeInputState geInput;
+	GeBridgeGeActionState geActions;
+	GeBridgeGeInventoryState geInventory;
 
 	Map<Integer, Integer> inventoryAsMap()
 	{
