@@ -18,12 +18,27 @@ public class GeBridgeHttpServerTest
 	public void testStateEndpointReturnsJsonAndRejectsWrites() throws Exception
 	{
 		GeBridgeSnapshot snapshot = new GeBridgeSnapshot(
-			1,
+			2,
 			123L,
+			42L,
 			"LOGGED_IN",
 			Collections.emptyList(),
 			Collections.emptyList(),
-			0
+			0,
+			new GeBridgeClientState(
+				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
+			new GeBridgePlayerState(true, 3164, 3487, 0),
+			new GeBridgeInterfaceState(true, false, false, false, false, false, false),
+			new GeBridgeGeState(
+				true,
+				false,
+				-1,
+				new GeBridgeBounds(20, 20, 500, 360, true),
+				GeBridgeBounds.invalid(),
+				new GeBridgeBounds(550, 200, 180, 250, true)
+			),
+			new GeBridgeInventoryState(28, 1, 27),
+			new GeBridgeSafetyState(true, false, true, true)
 		);
 		AtomicReference<GeBridgeSnapshot> ref = new AtomicReference<>(snapshot);
 		GeBridgeHttpServer server = new GeBridgeHttpServer(new Gson(), ref::get, 0);
@@ -40,8 +55,10 @@ public class GeBridgeHttpServerTest
 			{
 				body = reader.readLine();
 			}
-			assertTrue(body.contains("\"protocol\":1"));
+			assertTrue(body.contains("\"protocol\":2"));
 			assertTrue(body.contains("\"gameState\":\"LOGGED_IN\""));
+			assertTrue(body.contains("\"canvasWidth\":773"));
+			assertTrue(body.contains("\"safeForGeMouseActions\":true"));
 
 			HttpURLConnection post = (HttpURLConnection) url.openConnection();
 			post.setRequestMethod("POST");
