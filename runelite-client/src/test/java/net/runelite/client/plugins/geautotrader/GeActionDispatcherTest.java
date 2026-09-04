@@ -65,7 +65,7 @@ public class GeActionDispatcherTest
 	public void testOpenBuyRecognizesCreateBuyOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Client.class) == null ? null : mock(Widget.class);
+		Widget window = mock(Widget.class);
 		Widget buy = mock(Widget.class);
 
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
