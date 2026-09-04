@@ -8,6 +8,75 @@ import requests
 
 
 @dataclass(frozen=True)
+class BridgeBounds:
+    x: int
+    y: int
+    width: int
+    height: int
+    valid: bool
+
+
+@dataclass(frozen=True)
+class BridgeClientState:
+    logged_in: bool
+    world: int
+    world_types: Tuple[str, ...]
+    members_world: bool
+    canvas_width: int
+    canvas_height: int
+    viewport_width: int
+    viewport_height: int
+    viewport_x_offset: int
+    viewport_y_offset: int
+    top_level_interface_id: int
+    fps: int
+
+
+@dataclass(frozen=True)
+class BridgePlayerState:
+    present: bool
+    world_x: int
+    world_y: int
+    plane: int
+
+
+@dataclass(frozen=True)
+class BridgeInterfaceState:
+    grand_exchange_open: bool
+    grand_exchange_offer_setup_open: bool
+    bank_open: bool
+    world_map_open: bool
+    dialog_open: bool
+    chatbox_input_open: bool
+    dragging_widget: bool
+
+
+@dataclass(frozen=True)
+class BridgeGeState:
+    open: bool
+    offer_setup_open: bool
+    offer_setup_item_id: int
+    window_bounds: BridgeBounds
+    offer_setup_bounds: BridgeBounds
+    inventory_bounds: BridgeBounds
+
+
+@dataclass(frozen=True)
+class BridgeInventoryState:
+    capacity: int
+    occupied_slots: int
+    free_slots: int
+
+
+@dataclass(frozen=True)
+class BridgeSafetyState:
+    bridge_ready: bool
+    modal_blocker: bool
+    safe_for_mouse_actions: bool
+    safe_for_ge_mouse_actions: bool
+
+
+@dataclass(frozen=True)
 class BridgeSlot:
     slot: int
     item_id: int
@@ -23,13 +92,22 @@ class BridgeSlot:
 @dataclass(frozen=True)
 class BridgeSnapshot:
     generated_at_epoch_ms: int
+    tick: int
     game_state: str
     slots: Tuple[BridgeSlot, ...]
     inventory: Dict[int, int]
     inventory_gp: int
+    client: BridgeClientState
+    player: BridgePlayerState
+    interfaces: BridgeInterfaceState
+    ge: BridgeGeState
+    inventory_state: BridgeInventoryState
+    safety: BridgeSafetyState
 
 
 class RuneLiteBridgeClient:
+    PROTOCOL = 2
+
     def __init__(
         self,
         base_url: str = "http://127.0.0.1:17654",
@@ -55,7 +133,7 @@ class RuneLiteBridgeClient:
 
         if not isinstance(payload, dict):
             return None
-        if payload.get("protocol") != 1:
+        if payload.get("protocol") != self.PROTOCOL:
             return None
         if payload.get("gameState") != "LOGGED_IN":
             return None
@@ -70,7 +148,25 @@ class RuneLiteBridgeClient:
 
         raw_slots = payload.get("slots")
         raw_inventory = payload.get("inventory")
+        raw_client = payload.get("client")
+        raw_player = payload.get("player")
+        raw_interfaces = payload.get("interfaces")
+        raw_ge = payload.get("ge")
+        raw_inventory_state = payload.get("inventoryState")
+        raw_safety = payload.get("safety")
         if not isinstance(raw_slots, list) or not isinstance(raw_inventory, list):
+            return None
+        if not all(
+            isinstance(section, dict)
+            for section in (
+                raw_client,
+                raw_player,
+                raw_interfaces,
+                raw_ge,
+                raw_inventory_state,
+                raw_safety,
+            )
+        ):
             return None
 
         try:
@@ -100,16 +196,91 @@ class RuneLiteBridgeClient:
                     continue
                 inventory[item_id] = inventory.get(item_id, 0) + quantity
 
+            client = BridgeClientState(
+                logged_in=bool(raw_client["loggedIn"]),
+                world=int(raw_client["world"]),
+                world_types=tuple(str(value) for value in raw_client["worldTypes"]),
+                members_world=bool(raw_client["membersWorld"]),
+                canvas_width=int(raw_client["canvasWidth"]),
+                canvas_height=int(raw_client["canvasHeight"]),
+                viewport_width=int(raw_client["viewportWidth"]),
+                viewport_height=int(raw_client["viewportHeight"]),
+                viewport_x_offset=int(raw_client["viewportXOffset"]),
+                viewport_y_offset=int(raw_client["viewportYOffset"]),
+                top_level_interface_id=int(raw_client["topLevelInterfaceId"]),
+                fps=int(raw_client["fps"]),
+            )
+            player = BridgePlayerState(
+                present=bool(raw_player["present"]),
+                world_x=int(raw_player["worldX"]),
+                world_y=int(raw_player["worldY"]),
+                plane=int(raw_player["plane"]),
+            )
+            interfaces = BridgeInterfaceState(
+                grand_exchange_open=bool(raw_interfaces["grandExchangeOpen"]),
+                grand_exchange_offer_setup_open=bool(raw_interfaces["grandExchangeOfferSetupOpen"]),
+                bank_open=bool(raw_interfaces["bankOpen"]),
+                world_map_open=bool(raw_interfaces["worldMapOpen"]),
+                dialog_open=bool(raw_interfaces["dialogOpen"]),
+                chatbox_input_open=bool(raw_interfaces["chatboxInputOpen"]),
+                dragging_widget=bool(raw_interfaces["draggingWidget"]),
+            )
+            ge = BridgeGeState(
+                open=bool(raw_ge["open"]),
+                offer_setup_open=bool(raw_ge["offerSetupOpen"]),
+                offer_setup_item_id=int(raw_ge["offerSetupItemId"]),
+                window_bounds=self._parse_bounds(raw_ge["windowBounds"]),
+                offer_setup_bounds=self._parse_bounds(raw_ge["offerSetupBounds"]),
+                inventory_bounds=self._parse_bounds(raw_ge["inventoryBounds"]),
+            )
+            inventory_state = BridgeInventoryState(
+                capacity=int(raw_inventory_state["capacity"]),
+                occupied_slots=int(raw_inventory_state["occupiedSlots"]),
+                free_slots=int(raw_inventory_state["freeSlots"]),
+            )
+            safety = BridgeSafetyState(
+                bridge_ready=bool(raw_safety["bridgeReady"]),
+                modal_blocker=bool(raw_safety["modalBlocker"]),
+                safe_for_mouse_actions=bool(raw_safety["safeForMouseActions"]),
+                safe_for_ge_mouse_actions=bool(raw_safety["safeForGeMouseActions"]),
+            )
+            tick = int(payload["tick"])
             inventory_gp = int(payload.get("inventoryGp", inventory.get(995, 0)))
         except (KeyError, TypeError, ValueError):
             return None
 
+        if not client.logged_in or not player.present or not safety.bridge_ready:
+            return None
+        if client.canvas_width <= 0 or client.canvas_height <= 0:
+            return None
+        if inventory_state.capacity <= 0 or inventory_state.free_slots < 0:
+            return None
+
         return BridgeSnapshot(
             generated_at_epoch_ms=generated_at,
+            tick=tick,
             game_state="LOGGED_IN",
             slots=slots,
             inventory=inventory,
             inventory_gp=inventory_gp,
+            client=client,
+            player=player,
+            interfaces=interfaces,
+            ge=ge,
+            inventory_state=inventory_state,
+            safety=safety,
+        )
+
+    @staticmethod
+    def _parse_bounds(raw: object) -> BridgeBounds:
+        if not isinstance(raw, dict):
+            raise TypeError("bounds must be an object")
+        return BridgeBounds(
+            x=int(raw["x"]),
+            y=int(raw["y"]),
+            width=int(raw["width"]),
+            height=int(raw["height"]),
+            valid=bool(raw["valid"]),
         )
 
     @staticmethod
@@ -129,3 +300,29 @@ class RuneLiteBridgeClient:
             if slot.slot == int(slot_index):
                 return slot.state
         return "UNKNOWN"
+
+    @staticmethod
+    def safe_for_mouse_actions(snapshot: Optional[BridgeSnapshot]) -> bool:
+        return bool(snapshot is not None and snapshot.safety.safe_for_mouse_actions)
+
+    @staticmethod
+    def safe_for_ge_mouse_actions(snapshot: Optional[BridgeSnapshot]) -> bool:
+        return bool(snapshot is not None and snapshot.safety.safe_for_ge_mouse_actions)
+
+    @staticmethod
+    def modal_blocked(snapshot: Optional[BridgeSnapshot]) -> bool:
+        return bool(snapshot is None or snapshot.safety.modal_blocker)
+
+    @staticmethod
+    def canvas_size(snapshot: Optional[BridgeSnapshot]) -> Optional[Tuple[int, int]]:
+        if snapshot is None:
+            return None
+        if snapshot.client.canvas_width <= 0 or snapshot.client.canvas_height <= 0:
+            return None
+        return snapshot.client.canvas_width, snapshot.client.canvas_height
+
+    @staticmethod
+    def ge_window_bounds(snapshot: Optional[BridgeSnapshot]) -> Optional[BridgeBounds]:
+        if snapshot is None or not snapshot.ge.window_bounds.valid:
+            return None
+        return snapshot.ge.window_bounds
