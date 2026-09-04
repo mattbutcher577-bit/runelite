@@ -39,7 +39,7 @@ public final class GeActionDispatcher
 			case TYPE_ITEM_SEARCH:
 				return promptInput.typeItemSearch(action.getItemName(), state);
 			case SELECT_ITEM:
-				return execute(findSearchResultAction(action.getItemId()));
+				return execute(findSearchResultAction(action.getItemId(), action.getItemName()));
 			case SELECT_SELL_ITEM:
 				return execute(findSellInventoryAction(action.getItemId()));
 			case OPEN_QUANTITY:
@@ -99,43 +99,27 @@ public final class GeActionDispatcher
 		return null;
 	}
 
-	private GeWidgetActionSpec findSearchResultAction(int itemId)
+	private GeWidgetActionSpec findSearchResultAction(int itemId, String itemName)
 	{
 		Widget container = client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
 		if (container == null || container.isHidden())
 		{
 			return null;
 		}
-		Widget[] children = container.getDynamicChildren();
-		if (children == null)
+
+		GeWidgetActionSpec direct = GeWidgetActionResolver.findUniqueItem(
+			container, itemId, "Select", "Choose");
+		if (direct != null)
+		{
+			return direct;
+		}
+
+		if (!GeWidgetActionResolver.findVisibleItemIds(container).contains(itemId))
 		{
 			return null;
 		}
-		GeWidgetActionSpec match = null;
-		for (int offset = 0; offset + 2 < children.length; offset += 3)
-		{
-			Widget icon = children[offset];
-			Widget name = children[offset + 1];
-			if (icon == null || icon.isHidden() || icon.getItemId() != itemId)
-			{
-				continue;
-			}
-			GeWidgetActionSpec current = GeWidgetActionResolver.findUnique(name, "Select", "Choose");
-			if (current == null)
-			{
-				current = GeWidgetActionResolver.findUnique(icon, "Select", "Choose");
-			}
-			if (current == null)
-			{
-				current = GeWidgetActionResolver.findUnique(name);
-			}
-			if (current == null || match != null)
-			{
-				return null;
-			}
-			match = current;
-		}
-		return match;
+		return GeWidgetActionResolver.findUniqueNamed(
+			container, itemName, "Select", "Choose");
 	}
 
 	private GeWidgetActionSpec findSellInventoryAction(int itemId)
