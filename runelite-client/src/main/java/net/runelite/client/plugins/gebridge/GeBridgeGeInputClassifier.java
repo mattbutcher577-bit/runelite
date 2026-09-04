@@ -12,13 +12,15 @@ final class GeBridgeGeInputClassifier
 	{
 	}
 
-	static String classify(boolean offerSetupOpen, int messageLayerMode, String prompt)
+	static String classify(
+		boolean offerSetupOpen,
+		int messageLayerMode,
+		String prompt,
+		boolean fullInputVisible,
+		boolean buySetup,
+		int setupItemId)
 	{
 		if (!offerSetupOpen)
-		{
-			return "NONE";
-		}
-		if (messageLayerMode == InputType.NONE.getType())
 		{
 			return "NONE";
 		}
@@ -33,6 +35,14 @@ final class GeBridgeGeInputClassifier
 		if (PRICE_PROMPT.equals(prompt))
 		{
 			return "PRICE";
+		}
+		if (fullInputVisible && buySetup && setupItemId < 0)
+		{
+			return "ITEM_SEARCH";
+		}
+		if (messageLayerMode == InputType.NONE.getType())
+		{
+			return "NONE";
 		}
 		return "UNKNOWN";
 	}
