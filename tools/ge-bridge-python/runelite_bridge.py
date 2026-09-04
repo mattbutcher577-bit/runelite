@@ -77,6 +77,25 @@ class BridgeSafetyState:
 
 
 @dataclass(frozen=True)
+class BridgeInputState:
+    last_input_epoch_ms: int
+    last_mouse_move_epoch_ms: int
+    last_mouse_click_epoch_ms: int
+    last_mouse_press_epoch_ms: int
+    last_mouse_release_epoch_ms: int
+    last_mouse_wheel_epoch_ms: int
+    last_keyboard_epoch_ms: int
+    mouse_x: int
+    mouse_y: int
+    mouse_inside_canvas: bool
+    mouse_buttons_down_mask: int
+    last_mouse_button: int
+    last_wheel_rotation: int
+    last_control_key: str
+    input_idle_ms: int
+
+
+@dataclass(frozen=True)
 class BridgeSlot:
     slot: int
     item_id: int
@@ -103,10 +122,27 @@ class BridgeSnapshot:
     ge: BridgeGeState
     inventory_state: BridgeInventoryState
     safety: BridgeSafetyState
+    input: BridgeInputState
 
 
 class RuneLiteBridgeClient:
-    PROTOCOL = 2
+    PROTOCOL = 3
+    SAFE_CONTROL_KEYS = {
+        "",
+        "SHIFT",
+        "CTRL",
+        "ALT",
+        "ESCAPE",
+        "ENTER",
+        "F8",
+        "TAB",
+        "BACKSPACE",
+        "DELETE",
+        "LEFT",
+        "RIGHT",
+        "UP",
+        "DOWN",
+    }
 
     def __init__(
         self,
@@ -154,6 +190,7 @@ class RuneLiteBridgeClient:
         raw_ge = payload.get("ge")
         raw_inventory_state = payload.get("inventoryState")
         raw_safety = payload.get("safety")
+        raw_input = payload.get("input")
         if not isinstance(raw_slots, list) or not isinstance(raw_inventory, list):
             return None
         if not all(
@@ -165,6 +202,7 @@ class RuneLiteBridgeClient:
                 raw_ge,
                 raw_inventory_state,
                 raw_safety,
+                raw_input,
             )
         ):
             return None
@@ -244,6 +282,26 @@ class RuneLiteBridgeClient:
                 safe_for_mouse_actions=bool(raw_safety["safeForMouseActions"]),
                 safe_for_ge_mouse_actions=bool(raw_safety["safeForGeMouseActions"]),
             )
+            last_control_key = str(raw_input.get("lastControlKey", "")).upper()
+            if last_control_key not in self.SAFE_CONTROL_KEYS:
+                last_control_key = ""
+            input_state = BridgeInputState(
+                last_input_epoch_ms=int(raw_input["lastInputEpochMs"]),
+                last_mouse_move_epoch_ms=int(raw_input["lastMouseMoveEpochMs"]),
+                last_mouse_click_epoch_ms=int(raw_input["lastMouseClickEpochMs"]),
+                last_mouse_press_epoch_ms=int(raw_input["lastMousePressEpochMs"]),
+                last_mouse_release_epoch_ms=int(raw_input["lastMouseReleaseEpochMs"]),
+                last_mouse_wheel_epoch_ms=int(raw_input["lastMouseWheelEpochMs"]),
+                last_keyboard_epoch_ms=int(raw_input["lastKeyboardEpochMs"]),
+                mouse_x=int(raw_input["mouseX"]),
+                mouse_y=int(raw_input["mouseY"]),
+                mouse_inside_canvas=bool(raw_input["mouseInsideCanvas"]),
+                mouse_buttons_down_mask=int(raw_input["mouseButtonsDownMask"]),
+                last_mouse_button=int(raw_input["lastMouseButton"]),
+                last_wheel_rotation=int(raw_input["lastWheelRotation"]),
+                last_control_key=last_control_key,
+                input_idle_ms=int(raw_input["inputIdleMs"]),
+            )
             tick = int(payload["tick"])
             inventory_gp = int(payload.get("inventoryGp", inventory.get(995, 0)))
         except (KeyError, TypeError, ValueError):
@@ -254,6 +312,8 @@ class RuneLiteBridgeClient:
         if client.canvas_width <= 0 or client.canvas_height <= 0:
             return None
         if inventory_state.capacity <= 0 or inventory_state.free_slots < 0:
+            return None
+        if input_state.mouse_buttons_down_mask < 0 or input_state.input_idle_ms < -1:
             return None
 
         return BridgeSnapshot(
@@ -269,6 +329,7 @@ class RuneLiteBridgeClient:
             ge=ge,
             inventory_state=inventory_state,
             safety=safety,
+            input=input_state,
         )
 
     @staticmethod
@@ -326,3 +387,27 @@ class RuneLiteBridgeClient:
         if snapshot is None or not snapshot.ge.window_bounds.valid:
             return None
         return snapshot.ge.window_bounds
+
+    @staticmethod
+    def mouse_position(snapshot: Optional[BridgeSnapshot]) -> Optional[Tuple[int, int]]:
+        if snapshot is None:
+            return None
+        return snapshot.input.mouse_x, snapshot.input.mouse_y
+
+    @staticmethod
+    def input_idle_ms(snapshot: Optional[BridgeSnapshot]) -> Optional[int]:
+        if snapshot is None:
+            return None
+        return snapshot.input.input_idle_ms
+
+    @staticmethod
+    def recent_input(
+        snapshot: Optional[BridgeSnapshot],
+        window_ms: int,
+        now_epoch_ms: Optional[int] = None,
+    ) -> bool:
+        if snapshot is None or snapshot.input.last_input_epoch_ms <= 0:
+            return False
+        now = int(time.time() * 1000) if now_epoch_ms is None else int(now_epoch_ms)
+        age = max(0, now - snapshot.input.last_input_epoch_ms)
+        return age <= max(0, int(window_ms))
