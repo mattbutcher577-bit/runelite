@@ -11,14 +11,25 @@ import net.runelite.api.Item;
 
 final class GeBridgeSnapshotBuilder
 {
-	static final int PROTOCOL = 1;
+	static final int PROTOCOL = 2;
 	static final int COINS_ID = 995;
+	static final int INVENTORY_CAPACITY = 28;
 
 	private GeBridgeSnapshotBuilder()
 	{
 	}
 
-	static GeBridgeSnapshot build(GameState gameState, GrandExchangeOffer[] offers, Item[] inventory, long generatedAtEpochMs)
+	static GeBridgeSnapshot build(
+		GameState gameState,
+		GrandExchangeOffer[] offers,
+		Item[] inventory,
+		long generatedAtEpochMs,
+		long tick,
+		GeBridgeClientState clientState,
+		GeBridgePlayerState playerState,
+		GeBridgeInterfaceState interfaceState,
+		GeBridgeGeState geState,
+		GeBridgeSafetyState safetyState)
 	{
 		List<GeBridgeSlot> slots = new ArrayList<>();
 		if (offers != null)
@@ -30,6 +41,7 @@ final class GeBridgeSnapshotBuilder
 		}
 
 		Map<Integer, Integer> aggregated = new LinkedHashMap<>();
+		int occupiedSlots = 0;
 		if (inventory != null)
 		{
 			for (Item item : inventory)
@@ -38,6 +50,7 @@ final class GeBridgeSnapshotBuilder
 				{
 					continue;
 				}
+				occupiedSlots++;
 				aggregated.merge(item.getId(), item.getQuantity(), Integer::sum);
 			}
 		}
@@ -48,13 +61,27 @@ final class GeBridgeSnapshotBuilder
 			inventoryItems.add(new GeBridgeInventoryItem(entry.getKey(), entry.getValue()));
 		}
 
+		int boundedOccupiedSlots = Math.min(INVENTORY_CAPACITY, occupiedSlots);
+		GeBridgeInventoryState inventoryState = new GeBridgeInventoryState(
+			INVENTORY_CAPACITY,
+			boundedOccupiedSlots,
+			Math.max(0, INVENTORY_CAPACITY - boundedOccupiedSlots)
+		);
+
 		return new GeBridgeSnapshot(
 			PROTOCOL,
 			generatedAtEpochMs,
+			tick,
 			gameState == null ? GameState.UNKNOWN.name() : gameState.name(),
 			slots,
 			inventoryItems,
-			aggregated.getOrDefault(COINS_ID, 0)
+			aggregated.getOrDefault(COINS_ID, 0),
+			clientState,
+			playerState,
+			interfaceState,
+			geState,
+			inventoryState,
+			safetyState
 		);
 	}
 
