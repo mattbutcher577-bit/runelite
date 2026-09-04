@@ -22,6 +22,7 @@ class GeBridgeSnapshot
 	GeBridgeInventoryState inventoryState;
 	GeBridgeSafetyState safety;
 	GeBridgeInputState input;
+	GeBridgeSearchState search;
 
 	Map<Integer, Integer> inventoryAsMap()
 	{
