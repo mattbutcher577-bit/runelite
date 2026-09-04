@@ -33,7 +33,6 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarClientID;
-import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
@@ -264,7 +263,7 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeClientState clientState = readClientState(gameState);
 		GeBridgePlayerState playerState = readPlayerState();
 		GeBridgeInterfaceState interfaceState = readInterfaceState();
-		GeBridgeGeState geState = readGeState(interfaceState);
+		GeBridgeGeState geState = GeBridgeGeStateReader.read(client, interfaceState);
 		GeBridgeSafetyState safetyState = readSafetyState(playerState, interfaceState);
 		GeBridgeInputState inputState = currentInputState(nowEpochMs);
 		GeBridgeSearchState searchState = readSearchState(interfaceState);
@@ -409,21 +408,6 @@ public class GeBridgePlugin extends Plugin
 		);
 	}
 
-	private GeBridgeGeState readGeState(GeBridgeInterfaceState interfaceState)
-	{
-		int offerSetupItemId = interfaceState.isGrandExchangeOfferSetupOpen()
-			? client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)
-			: -1;
-		return new GeBridgeGeState(
-			interfaceState.isGrandExchangeOpen(),
-			interfaceState.isGrandExchangeOfferSetupOpen(),
-			offerSetupItemId,
-			boundsOf(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER),
-			boundsOf(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER),
-			boundsOf(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER)
-		);
-	}
-
 	private GeBridgeSearchState readSearchState(GeBridgeInterfaceState interfaceState)
 	{
 		if (!interfaceState.isGrandExchangeOfferSetupOpen() || !interfaceState.isChatboxInputOpen())
@@ -487,6 +471,7 @@ public class GeBridgePlugin extends Plugin
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER),
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER),
 			itemManager,
+			client.getGrandExchangeOffers(),
 			bridgeTick);
 	}
 
