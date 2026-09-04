@@ -54,6 +54,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	private GeAutoTraderOverlay overlay;
 
 	private final AtomicBoolean stopped = new AtomicBoolean();
+	private GeStopCause stopCause = GeStopCause.NONE;
 	private GeStateReader stateReader;
 	private GeMarketService marketService;
 	private GeTradeLedger tradeLedger;
@@ -78,6 +79,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void startUp()
 	{
 		stopped.set(false);
+		stopCause = GeStopCause.NONE;
 		manualRestartAllowed = false;
 		restartArmed = false;
 		restartRequested = false;
@@ -108,6 +110,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void shutDown()
 	{
 		stopped.set(true);
+		stopCause = GeStopCause.NONE;
 		manualRestartAllowed = false;
 		restartArmed = false;
 		restartRequested = false;
@@ -188,11 +191,18 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		{
 			stateMachine.recoverAbandonedBuySetups(lastState);
 			stopped.set(false);
+			stopCause = GeStopCause.NONE;
 			manualRestartAllowed = false;
 			restartArmed = false;
 			restartRequested = false;
 			lastAction = GePlannedAction.none();
 			lastReason = GeReasonCode.OK;
+		}
+
+		if (stopped.get() && stopCause == GeStopCause.EXECUTION_FAILURE)
+		{
+			lastAction = GePlannedAction.none();
+			return;
 		}
 
 		GePlannedAction action = stateMachine.onTick(lastState, Instant.now());
@@ -227,6 +237,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	void stopForExecutionFailure()
 	{
 		stopped.set(true);
+		stopCause = GeStopCause.EXECUTION_FAILURE;
 		manualRestartAllowed = false;
 		restartArmed = false;
 		restartRequested = false;
@@ -238,6 +249,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		if (event != null && event.getKeyCode() == KeyEvent.VK_F8)
 		{
 			stopped.set(true);
+			stopCause = GeStopCause.F8;
 			manualRestartAllowed = true;
 			restartArmed = false;
 			restartRequested = false;
