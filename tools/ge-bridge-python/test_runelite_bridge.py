@@ -21,7 +21,7 @@ class RuneLiteBridgeClientTest(unittest.TestCase):
     def _valid_payload(self):
         now = int(time.time() * 1000)
         return {
-            "protocol": 2,
+            "protocol": 3,
             "generatedAtEpochMs": now,
             "tick": 42,
             "gameState": "LOGGED_IN",
@@ -89,9 +89,26 @@ class RuneLiteBridgeClientTest(unittest.TestCase):
                 "safeForMouseActions": True,
                 "safeForGeMouseActions": True,
             },
+            "input": {
+                "lastInputEpochMs": now - 50,
+                "lastMouseMoveEpochMs": now - 70,
+                "lastMouseClickEpochMs": now - 100,
+                "lastMousePressEpochMs": now - 110,
+                "lastMouseReleaseEpochMs": now - 90,
+                "lastMouseWheelEpochMs": now - 300,
+                "lastKeyboardEpochMs": now - 500,
+                "mouseX": 400,
+                "mouseY": 250,
+                "mouseInsideCanvas": True,
+                "mouseButtonsDownMask": 0,
+                "lastMouseButton": 1,
+                "lastWheelRotation": -1,
+                "lastControlKey": "SHIFT",
+                "inputIdleMs": 50,
+            },
         }
 
-    def test_valid_snapshot_parses_protocol_v2_state(self):
+    def test_valid_snapshot_parses_protocol_v3_state_and_input(self):
         payload = self._valid_payload()
         self.session.get.return_value = self._response(payload)
 
@@ -104,6 +121,33 @@ class RuneLiteBridgeClientTest(unittest.TestCase):
         self.assertEqual(25, snapshot.inventory_state.free_slots)
         self.assertTrue(self.client.safe_for_ge_mouse_actions(snapshot))
         self.assertEqual(20, self.client.ge_window_bounds(snapshot).x)
+        self.assertEqual((400, 250), self.client.mouse_position(snapshot))
+        self.assertEqual("SHIFT", snapshot.input.last_control_key)
+        self.assertEqual(50, self.client.input_idle_ms(snapshot))
+
+    def test_recent_input_helper_uses_bridge_timestamp(self):
+        payload = self._valid_payload()
+        self.session.get.return_value = self._response(payload)
+        snapshot = self.client.read_state()
+        self.assertIsNotNone(snapshot)
+        self.assertTrue(self.client.recent_input(snapshot, 500, now_epoch_ms=payload["generatedAtEpochMs"]))
+        self.assertFalse(self.client.recent_input(snapshot, 10, now_epoch_ms=payload["generatedAtEpochMs"]))
+
+    def test_parser_does_not_expose_typed_text(self):
+        payload = self._valid_payload()
+        payload["input"]["typedText"] = "secret message"
+        payload["input"]["keyChar"] = "x"
+        self.session.get.return_value = self._response(payload)
+        snapshot = self.client.read_state()
+        self.assertIsNotNone(snapshot)
+        self.assertFalse(hasattr(snapshot.input, "typed_text"))
+        self.assertFalse(hasattr(snapshot.input, "key_char"))
+
+    def test_missing_input_section_is_rejected(self):
+        payload = self._valid_payload()
+        del payload["input"]
+        self.session.get.return_value = self._response(payload)
+        self.assertIsNone(self.client.read_state())
 
     def test_modal_blocker_is_parsed_and_blocks_ge_safety(self):
         payload = self._valid_payload()
@@ -140,9 +184,9 @@ class RuneLiteBridgeClientTest(unittest.TestCase):
         self.session.get.return_value = self._response(payload)
         self.assertIsNone(self.client.read_state())
 
-    def test_protocol_v1_is_rejected(self):
+    def test_protocol_v2_is_rejected(self):
         payload = self._valid_payload()
-        payload["protocol"] = 1
+        payload["protocol"] = 2
         self.session.get.return_value = self._response(payload)
         self.assertIsNone(self.client.read_state())
 
