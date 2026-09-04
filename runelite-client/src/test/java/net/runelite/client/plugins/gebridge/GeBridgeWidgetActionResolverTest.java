@@ -8,6 +8,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class GeBridgeWidgetActionResolverTest
@@ -69,6 +71,25 @@ public class GeBridgeWidgetActionResolverTest
 		assertEquals(2, bounds.size());
 		assertEquals(100, bounds.get(0).getX());
 		assertEquals(200, bounds.get(1).getX());
+	}
+
+	@Test
+	public void testTraversalIsBounded()
+	{
+		Widget[] chain = new Widget[600];
+		for (int i = 0; i < chain.length; i++)
+		{
+			chain[i] = widget(new Rectangle(i, 10, 20, 20), null, "", "");
+		}
+		for (int i = 0; i + 1 < chain.length; i++)
+		{
+			when(chain[i].getNestedChildren()).thenReturn(new Widget[]{chain[i + 1]});
+		}
+		when(chain[5].getActions()).thenReturn(new String[]{"Buy"});
+
+		List<GeBridgeBounds> bounds = GeBridgeWidgetActionResolver.findAll(chain[0], "Buy");
+		assertEquals(1, bounds.size());
+		verify(chain[550], never()).getNestedChildren();
 	}
 
 	@Test
