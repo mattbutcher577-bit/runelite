@@ -11,7 +11,7 @@ import net.runelite.api.Item;
 
 final class GeBridgeSnapshotBuilder
 {
-	static final int PROTOCOL = 4;
+	static final int PROTOCOL = 5;
 	static final int COINS_ID = 995;
 	static final int INVENTORY_CAPACITY = 28;
 
