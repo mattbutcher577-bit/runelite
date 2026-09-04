@@ -17,8 +17,8 @@ public class GeBridgeGeActionReaderTest
 	public void testMixedOccupiedAndEmptySlotsKeepRealSlotIdentity()
 	{
 		Widget open1 = action("View offer", 20, 50, 100, 70);
-		Widget buy2 = action("Buy", 140, 50, 45, 30);
-		Widget sell2 = action("Sell", 190, 50, 45, 30);
+		Widget buy2 = action("Create Buy offer", 140, 50, 45, 30);
+		Widget sell2 = action("Create Sell offer", 190, 50, 45, 30);
 		Widget open3 = action("View offer", 260, 50, 100, 70);
 
 		Widget window = mock(Widget.class);
