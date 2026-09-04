@@ -2,7 +2,6 @@ package net.runelite.client.plugins.geautotrader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,30 +150,16 @@ public final class GeStateReader
 
 	private Set<Integer> readSearchResultItemIds(boolean setupOpen, GePromptMode promptMode)
 	{
-		Set<Integer> result = new HashSet<>();
 		if (!setupOpen || promptMode != GePromptMode.ITEM_SEARCH)
 		{
-			return result;
+			return java.util.Collections.emptySet();
 		}
 		Widget container = client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
 		if (container == null || container.isHidden())
 		{
-			return result;
+			return java.util.Collections.emptySet();
 		}
-		Widget[] children = container.getDynamicChildren();
-		if (children == null)
-		{
-			return result;
-		}
-		for (int offset = 0; offset + 2 < children.length; offset += 3)
-		{
-			Widget icon = children[offset];
-			if (icon != null && !icon.isHidden() && icon.getItemId() > 0)
-			{
-				result.add(icon.getItemId());
-			}
-		}
-		return result;
+		return GeWidgetActionResolver.findVisibleItemIds(container);
 	}
 
 	private boolean isVisible(WidgetInfo info)
