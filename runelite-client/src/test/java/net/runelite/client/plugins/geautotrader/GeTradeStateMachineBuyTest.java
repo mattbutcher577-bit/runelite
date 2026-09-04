@@ -3,6 +3,7 @@ package net.runelite.client.plugins.geautotrader;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -64,6 +65,24 @@ public class GeTradeStateMachineBuyTest
 			slot(1, "BUYING", 1127, 125, 0, 9001), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now.plusSeconds(9));
 		GeTradeObligation obligation = trades.all().iterator().next();
 		assertNotNull(obligation.getPlacedAt());
+	}
+
+	@Test
+	public void testMarketRecoveryWithNoCandidateClearsUnavailableReason()
+	{
+		Instant now = Instant.parse("2026-09-04T18:00:00Z");
+		AtomicReference<GeMarketSnapshot> market = new AtomicReference<>();
+		GeTradeStateMachine machine = new GeTradeStateMachine(
+			config(), new GeLimitLedger(), new GeTradeLedger(), market::get, () -> true, () -> false);
+		GeObservedState emptyGe = state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN);
+
+		assertEquals(GePlannedActionType.NONE, machine.onTick(emptyGe, now).getType());
+		assertEquals(GeReasonCode.MARKET_DATA_UNAVAILABLE, machine.getLastReason());
+
+		market.set(new GeMarketSnapshot(now.plusSeconds(1), Collections.emptyList()));
+		assertEquals(GePlannedActionType.NONE, machine.onTick(emptyGe, now.plusSeconds(1)).getType());
+		assertEquals("NO_OPPORTUNITY", machine.getLastReason().name());
 	}
 
 	@Test
