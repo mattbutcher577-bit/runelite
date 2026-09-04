@@ -20,13 +20,17 @@ public class GeBridgeGeStateReaderTest
 		GeBridgeInterfaceState interfaces = new GeBridgeInterfaceState(
 			true, true, false, false, false, false, false);
 
+		Widget window = widget(10, 20, 500, 350);
+		Widget offer = widget(30, 50, 420, 250);
+		Widget inventory = widget(550, 100, 180, 250);
+
 		when(client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)).thenReturn(314);
 		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_QUANTITY)).thenReturn(1000);
 		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_PRICE)).thenReturn(12);
 		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE)).thenReturn(0);
-		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(widget(10, 20, 500, 350));
-		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(widget(30, 50, 420, 250));
-		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER)).thenReturn(widget(550, 100, 180, 250));
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(offer);
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER)).thenReturn(inventory);
 
 		GeBridgeGeState state = GeBridgeGeStateReader.read(client, interfaces);
 		assertEquals(314, state.getOfferSetupItemId());
