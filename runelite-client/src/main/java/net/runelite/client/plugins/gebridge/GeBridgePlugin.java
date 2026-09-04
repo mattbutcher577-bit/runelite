@@ -279,7 +279,7 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeInputState inputState = currentInputState(nowEpochMs);
 		GeBridgeSearchState searchState = readSearchState(interfaceState);
 		GeBridgeMouseState mouseState = readMouseState(seq);
-		GeBridgeLiveGeSections liveGeSections = readLiveGeSections(interfaceState);
+		GeBridgeLiveGeSections liveGeSections = readLiveGeSections(interfaceState, geState);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
@@ -471,13 +471,17 @@ public class GeBridgePlugin extends Plugin
 		return new GeBridgeSearchState(true, bridgeTick, results);
 	}
 
-	private GeBridgeLiveGeSections readLiveGeSections(GeBridgeInterfaceState interfaceState)
+	private GeBridgeLiveGeSections readLiveGeSections(
+		GeBridgeInterfaceState interfaceState,
+		GeBridgeGeState geState)
 	{
 		return GeBridgeLiveGeSections.read(
 			interfaceState.isGrandExchangeOfferSetupOpen(),
 			client.getVarcIntValue(VarClientID.MESLAYERMODE),
 			client.getWidget(WidgetInfo.CHATBOX_TITLE),
 			client.getWidget(WidgetInfo.CHATBOX_FULL_INPUT),
+			"BUY".equals(geState.getOfferSetupType()),
+			geState.getOfferSetupItemId(),
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER),
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER),
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER),
