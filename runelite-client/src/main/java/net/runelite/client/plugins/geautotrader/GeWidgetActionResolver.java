@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -33,6 +34,47 @@ public final class GeWidgetActionResolver
 		return all.size() == 1 ? all.get(0) : null;
 	}
 
+	public static GeWidgetActionSpec findUniqueNamed(Widget root, String expectedName, String... aliases)
+	{
+		String expected = normalize(expectedName);
+		if (expected.isEmpty())
+		{
+			return null;
+		}
+
+		Set<String> accepted = acceptedAliases(aliases);
+		List<GeWidgetActionSpec> matches = new ArrayList<>();
+		for (Widget widget : visibleWidgets(root))
+		{
+			String name = normalize(widget.getName());
+			String text = normalize(widget.getText());
+			if (!expected.equals(name) && !expected.equals(text))
+			{
+				continue;
+			}
+			GeWidgetActionSpec spec = actionSpec(widget, accepted);
+			if (spec != null)
+			{
+				matches.add(spec);
+			}
+		}
+		return matches.size() == 1 ? matches.get(0) : null;
+	}
+
+	public static Set<Integer> findVisibleItemIds(Widget root)
+	{
+		Set<Integer> result = new LinkedHashSet<>();
+		for (Widget widget : visibleWidgets(root))
+		{
+			int itemId = widget.getItemId();
+			if (itemId > 0)
+			{
+				result.add(itemId);
+			}
+		}
+		return result;
+	}
+
 	public static List<GeWidgetActionSpec> findAll(Widget root, String... aliases)
 	{
 		return findAllInternal(root, null, aliases);
@@ -40,11 +82,25 @@ public final class GeWidgetActionResolver
 
 	private static List<GeWidgetActionSpec> findAllInternal(Widget root, Integer requiredItemId, String... aliases)
 	{
-		if (root == null)
+		Set<String> accepted = acceptedAliases(aliases);
+		List<GeWidgetActionSpec> result = new ArrayList<>();
+		for (Widget widget : visibleWidgets(root))
 		{
-			return Collections.emptyList();
+			if (requiredItemId != null && widget.getItemId() != requiredItemId)
+			{
+				continue;
+			}
+			GeWidgetActionSpec spec = actionSpec(widget, accepted);
+			if (spec != null)
+			{
+				result.add(spec);
+			}
 		}
+		return result;
+	}
 
+	private static Set<String> acceptedAliases(String... aliases)
+	{
 		Set<String> accepted = new HashSet<>();
 		if (aliases != null)
 		{
@@ -57,8 +113,17 @@ public final class GeWidgetActionResolver
 				}
 			}
 		}
+		return accepted;
+	}
 
-		List<GeWidgetActionSpec> result = new ArrayList<>();
+	private static List<Widget> visibleWidgets(Widget root)
+	{
+		if (root == null)
+		{
+			return Collections.emptyList();
+		}
+
+		List<Widget> result = new ArrayList<>();
 		Set<Widget> seen = Collections.newSetFromMap(new IdentityHashMap<>());
 		Deque<Widget> queue = new ArrayDeque<>();
 		queue.add(root);
@@ -70,16 +135,7 @@ public final class GeWidgetActionResolver
 			{
 				continue;
 			}
-
-			if (requiredItemId == null || widget.getItemId() == requiredItemId)
-			{
-				GeWidgetActionSpec spec = actionSpec(widget, accepted);
-				if (spec != null)
-				{
-					result.add(spec);
-				}
-			}
-
+			result.add(widget);
 			enqueue(queue, widget.getChildren());
 			enqueue(queue, widget.getDynamicChildren());
 			enqueue(queue, widget.getStaticChildren());
