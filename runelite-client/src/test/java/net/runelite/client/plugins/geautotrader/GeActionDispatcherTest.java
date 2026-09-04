@@ -65,7 +65,7 @@ public class GeActionDispatcherTest
 	public void testOpenBuyRecognizesCreateBuyOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
+		Widget window = mock(Client.class) == null ? null : mock(Widget.class);
 		Widget buy = mock(Widget.class);
 
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
@@ -80,11 +80,64 @@ public class GeActionDispatcherTest
 		when(buy.getItemId()).thenReturn(-1);
 		when(buy.getName()).thenReturn("");
 
+		GeActionDispatcher dispatcher = dispatcher(client);
+		GeObservedState state = emptySlotState();
+		GePlannedAction action = openBuyAction();
+
+		assertEquals(GeReasonCode.OK, dispatcher.dispatch(action, state));
+		verify(client).menuAction(
+			7,
+			54321,
+			MenuAction.CC_OP,
+			1,
+			-1,
+			"Create Buy offer",
+			"");
+	}
+
+	@Test
+	public void testOpenBuyRecognizesTaggedCreateBuyOfferAction()
+	{
+		Client client = mock(Client.class);
+		Widget window = mock(Widget.class);
+		Widget buy = mock(Widget.class);
+		String liveAction = "<col=ff9040>Create Buy offer</col>";
+
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getActions()).thenReturn(null);
+		when(window.getChildren()).thenReturn(new Widget[]{buy});
+
+		when(buy.isHidden()).thenReturn(false);
+		when(buy.getActions()).thenReturn(new String[]{liveAction});
+		when(buy.getIndex()).thenReturn(7);
+		when(buy.getId()).thenReturn(54321);
+		when(buy.getItemId()).thenReturn(-1);
+		when(buy.getName()).thenReturn("");
+
+		GeActionDispatcher dispatcher = dispatcher(client);
+
+		assertEquals(GeReasonCode.OK, dispatcher.dispatch(openBuyAction(), emptySlotState()));
+		verify(client).menuAction(
+			7,
+			54321,
+			MenuAction.CC_OP,
+			1,
+			-1,
+			liveAction,
+			"");
+	}
+
+	private static GeActionDispatcher dispatcher(Client client)
+	{
 		GeExecutionService execution = new GeExecutionService(client, () -> false);
 		GePromptInputService input = new GePromptInputService(new Canvas(), () -> false);
-		GeActionDispatcher dispatcher = new GeActionDispatcher(client, execution, input);
+		return new GeActionDispatcher(client, execution, input);
+	}
 
-		GeObservedState state = new GeObservedState(
+	private static GeObservedState emptySlotState()
+	{
+		return new GeObservedState(
 			true,
 			false,
 			true,
@@ -96,7 +149,11 @@ public class GeActionDispatcherTest
 			0,
 			0,
 			GeTradeSide.UNKNOWN);
-		GePlannedAction action = GePlannedAction.of(
+	}
+
+	private static GePlannedAction openBuyAction()
+	{
+		return GePlannedAction.of(
 			GePlannedActionType.OPEN_BUY,
 			1,
 			1127,
@@ -104,15 +161,5 @@ public class GeActionDispatcherTest
 			125,
 			9001,
 			"v6-buy-1");
-
-		assertEquals(GeReasonCode.OK, dispatcher.dispatch(action, state));
-		verify(client).menuAction(
-			7,
-			54321,
-			MenuAction.CC_OP,
-			1,
-			-1,
-			"Create Buy offer",
-			"");
 	}
 }
