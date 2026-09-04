@@ -3,8 +3,10 @@ package net.runelite.client.plugins.geautotrader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class GeObservedState
 {
@@ -22,6 +24,7 @@ public final class GeObservedState
 	private final int setupPrice;
 	private final GeTradeSide setupSide;
 	private final GePromptMode promptMode;
+	private final Set<Integer> searchResultItemIds;
 
 	public GeObservedState(
 		boolean loggedIn,
@@ -50,7 +53,8 @@ public final class GeObservedState
 			setupQuantity,
 			setupPrice,
 			setupSide,
-			GePromptMode.UNKNOWN);
+			GePromptMode.UNKNOWN,
+			Collections.emptySet());
 	}
 
 	public GeObservedState(
@@ -69,6 +73,28 @@ public final class GeObservedState
 		GeTradeSide setupSide,
 		GePromptMode promptMode)
 	{
+		this(loggedIn, membersWorld, loginSettled, geOpen, blockerActive, world, gp, slots,
+			inventoryCounts, setupItemId, setupQuantity, setupPrice, setupSide, promptMode,
+			Collections.emptySet());
+	}
+
+	public GeObservedState(
+		boolean loggedIn,
+		boolean membersWorld,
+		boolean loginSettled,
+		boolean geOpen,
+		boolean blockerActive,
+		int world,
+		long gp,
+		List<GeObservedSlot> slots,
+		Map<Integer, Integer> inventoryCounts,
+		int setupItemId,
+		int setupQuantity,
+		int setupPrice,
+		GeTradeSide setupSide,
+		GePromptMode promptMode,
+		Set<Integer> searchResultItemIds)
+	{
 		this.loggedIn = loggedIn;
 		this.membersWorld = membersWorld;
 		this.loginSettled = loginSettled;
@@ -84,6 +110,8 @@ public final class GeObservedState
 		this.setupPrice = setupPrice;
 		this.setupSide = setupSide == null ? GeTradeSide.UNKNOWN : setupSide;
 		this.promptMode = promptMode == null ? GePromptMode.UNKNOWN : promptMode;
+		this.searchResultItemIds = Collections.unmodifiableSet(new HashSet<>(
+			searchResultItemIds == null ? Collections.emptySet() : searchResultItemIds));
 	}
 
 	public boolean isLoggedIn()
@@ -160,5 +188,15 @@ public final class GeObservedState
 	public GePromptMode getPromptMode()
 	{
 		return promptMode;
+	}
+
+	public Set<Integer> getSearchResultItemIds()
+	{
+		return searchResultItemIds;
+	}
+
+	public boolean hasSearchResult(int itemId)
+	{
+		return searchResultItemIds.contains(itemId);
 	}
 }
