@@ -141,6 +141,10 @@ public final class GeTradeStateMachine
 			case WAIT_PRICE_PROMPT:
 			case WAIT_PRICE_VALUE:
 			case WAIT_BUY_SLOT:
+			case WAIT_ABORT_READY:
+			case WAIT_ABORT_RESULT:
+			case WAIT_BUY_COLLECT_READY:
+			case WAIT_BUY_COLLECT_RESULT:
 			case WAIT_SELL_SETUP:
 			case WAIT_SELL_ITEM_SELECTED:
 			case WAIT_SELL_QUANTITY_PROMPT:
@@ -148,6 +152,8 @@ public final class GeTradeStateMachine
 			case WAIT_SELL_PRICE_PROMPT:
 			case WAIT_SELL_PRICE_VALUE:
 			case WAIT_SELL_SLOT:
+			case WAIT_SELL_COLLECT_READY:
+			case WAIT_SELL_COLLECT_RESULT:
 				return true;
 			default:
 				return false;
