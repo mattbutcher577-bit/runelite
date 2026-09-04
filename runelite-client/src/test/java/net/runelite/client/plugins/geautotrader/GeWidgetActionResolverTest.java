@@ -36,6 +36,28 @@ public class GeWidgetActionResolverTest
 	}
 
 	@Test
+	public void testExactItemIdCanBeSelected()
+	{
+		Widget root = widget(100, -1, -1, null, "root");
+		Widget wrong = widget(201, 1, 1319, new String[]{"Select"}, "Rune 2h sword");
+		Widget target = widget(202, 2, 1127, new String[]{"Select"}, "Adamant platebody");
+		when(root.getNestedChildren()).thenReturn(new Widget[]{wrong, target});
+		GeWidgetActionSpec spec = GeWidgetActionResolver.findUniqueItem(root, 1127, "Select");
+		assertNotNull(spec);
+		assertEquals(1127, spec.getItemId());
+		assertEquals(202, spec.getParam1());
+	}
+
+	@Test
+	public void testWrongItemIdFailsClosed()
+	{
+		Widget root = widget(100, -1, -1, null, "root");
+		Widget wrong = widget(201, 1, 1319, new String[]{"Select"}, "Rune 2h sword");
+		when(root.getChildren()).thenReturn(new Widget[]{wrong});
+		assertNull(GeWidgetActionResolver.findUniqueItem(root, 1127, "Select"));
+	}
+
+	@Test
 	public void testAmbiguousActionFailsClosed()
 	{
 		Widget root = widget(100, -1, -1, null, "root");
