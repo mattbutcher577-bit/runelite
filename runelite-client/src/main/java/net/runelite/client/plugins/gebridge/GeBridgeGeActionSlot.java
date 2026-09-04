@@ -9,4 +9,5 @@ class GeBridgeGeActionSlot
 	GeBridgeBounds slotBounds;
 	GeBridgeBounds buyButton;
 	GeBridgeBounds sellButton;
+	GeBridgeBounds openButton;
 }
