@@ -3,6 +3,7 @@ package net.runelite.client.plugins.geautotrader;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import javax.inject.Inject;
+import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -17,7 +18,8 @@ public final class GeAutoTraderOverlay extends OverlayPanel
 		super(plugin);
 		this.plugin = plugin;
 		setPosition(OverlayPosition.TOP_LEFT);
-		setPriority(PRIORITY_MED);
+		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		setPriority(PRIORITY_HIGH);
 	}
 
 	@Override
@@ -28,6 +30,18 @@ public final class GeAutoTraderOverlay extends OverlayPanel
 			.left("GE Auto-Trader V6")
 			.right(plugin.getStatusText())
 			.build());
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left("Market")
+			.right(plugin.getMarketStatusText())
+			.build());
+		String marketError = plugin.getMarketErrorText();
+		if (!marketError.isEmpty())
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left("Market error")
+				.right(marketError)
+				.build());
+		}
 		panelComponent.getChildren().add(LineComponent.builder()
 			.left("F8")
 			.right("STOP")
