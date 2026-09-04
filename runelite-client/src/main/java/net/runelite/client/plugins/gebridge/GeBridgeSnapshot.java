@@ -11,6 +11,8 @@ class GeBridgeSnapshot
 	int protocol;
 	long generatedAtEpochMs;
 	long tick;
+	String bridgeInstanceId;
+	long snapshotSeq;
 	String gameState;
 	List<GeBridgeSlot> slots;
 	List<GeBridgeInventoryItem> inventory;
