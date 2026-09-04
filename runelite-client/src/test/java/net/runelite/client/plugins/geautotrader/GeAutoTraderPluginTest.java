@@ -17,6 +17,7 @@ public class GeAutoTraderPluginTest
 			new Canvas(), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_F8, KeyEvent.CHAR_UNDEFINED);
 		plugin.keyPressed(event);
 		assertTrue(plugin.isStopped());
+		assertTrue(plugin.isManualRestartAllowed());
 		assertTrue(event.isConsumed());
 	}
 
@@ -38,6 +39,20 @@ public class GeAutoTraderPluginTest
 
 		plugin.onConfigChanged(enabledChange("true"));
 		assertTrue(plugin.isRestartRequested());
+		assertTrue(plugin.isStopped());
+	}
+
+	@Test
+	public void testExecutionFailureCannotBeRestartedWithConfigToggle()
+	{
+		GeAutoTraderPlugin plugin = new GeAutoTraderPlugin();
+		plugin.stopForExecutionFailure();
+		assertTrue(plugin.isStopped());
+		assertFalse(plugin.isManualRestartAllowed());
+
+		plugin.onConfigChanged(enabledChange("false"));
+		plugin.onConfigChanged(enabledChange("true"));
+		assertFalse(plugin.isRestartRequested());
 		assertTrue(plugin.isStopped());
 	}
 
