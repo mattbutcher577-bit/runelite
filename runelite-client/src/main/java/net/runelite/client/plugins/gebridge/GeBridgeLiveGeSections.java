@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.gebridge;
 
 import lombok.Value;
+import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.Text;
@@ -23,6 +24,31 @@ class GeBridgeLiveGeSections
 		ItemManager itemManager,
 		long tick)
 	{
+		return read(
+			offerSetupOpen,
+			messageLayerMode,
+			prompt,
+			inputField,
+			window,
+			setup,
+			inventory,
+			itemManager,
+			null,
+			tick);
+	}
+
+	static GeBridgeLiveGeSections read(
+		boolean offerSetupOpen,
+		int messageLayerMode,
+		Widget prompt,
+		Widget inputField,
+		Widget window,
+		Widget setup,
+		Widget inventory,
+		ItemManager itemManager,
+		GrandExchangeOffer[] offers,
+		long tick)
+	{
 		String promptText = prompt == null ? null : Text.removeTags(prompt.getText());
 		if (promptText != null)
 		{
@@ -35,7 +61,7 @@ class GeBridgeLiveGeSections
 			tick,
 			boundsOf(prompt),
 			boundsOf(inputField));
-		GeBridgeGeActionState geActions = GeBridgeGeActionReader.read(window, setup, tick);
+		GeBridgeGeActionState geActions = GeBridgeGeActionReader.read(window, setup, offers, tick);
 		GeBridgeGeInventoryState geInventory = GeBridgeGeInventoryReader.read(inventory, itemManager, tick);
 		return new GeBridgeLiveGeSections(geInput, geActions, geInventory);
 	}
