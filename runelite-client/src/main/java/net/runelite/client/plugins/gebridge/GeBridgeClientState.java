@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.gebridge;
 
+import java.util.Collections;
 import java.util.List;
 import lombok.Value;
 
@@ -168,6 +169,34 @@ class GeBridgeClientState
 			fps,
 			-1,
 			-1,
+			false);
+	}
+
+	static GeBridgeClientState unavailable(int lastLoginTick)
+	{
+		return new GeBridgeClientState(
+			false,
+			-1,
+			Collections.emptyList(),
+			false,
+			-1,
+			-1,
+			-1,
+			-1,
+			false,
+			-1,
+			-1,
+			-1,
+			-1,
+			false,
+			-1,
+			-1,
+			-1,
+			-1,
+			-1,
+			-1,
+			-1,
+			lastLoginTick,
 			false);
 	}
 }
