@@ -15,10 +15,99 @@ class GeBridgeClientState
 	int canvasScreenX;
 	int canvasScreenY;
 	boolean canvasScreenPositionValid;
+	int realWidth;
+	int realHeight;
+	int stretchedWidth;
+	int stretchedHeight;
+	boolean stretchedEnabled;
 	int viewportWidth;
 	int viewportHeight;
 	int viewportXOffset;
 	int viewportYOffset;
 	int topLevelInterfaceId;
 	int fps;
+
+	GeBridgeClientState(
+		boolean loggedIn,
+		int world,
+		List<String> worldTypes,
+		boolean membersWorld,
+		int canvasWidth,
+		int canvasHeight,
+		int canvasScreenX,
+		int canvasScreenY,
+		boolean canvasScreenPositionValid,
+		int realWidth,
+		int realHeight,
+		int stretchedWidth,
+		int stretchedHeight,
+		boolean stretchedEnabled,
+		int viewportWidth,
+		int viewportHeight,
+		int viewportXOffset,
+		int viewportYOffset,
+		int topLevelInterfaceId,
+		int fps)
+	{
+		this.loggedIn = loggedIn;
+		this.world = world;
+		this.worldTypes = worldTypes;
+		this.membersWorld = membersWorld;
+		this.canvasWidth = canvasWidth;
+		this.canvasHeight = canvasHeight;
+		this.canvasScreenX = canvasScreenX;
+		this.canvasScreenY = canvasScreenY;
+		this.canvasScreenPositionValid = canvasScreenPositionValid;
+		this.realWidth = realWidth;
+		this.realHeight = realHeight;
+		this.stretchedWidth = stretchedWidth;
+		this.stretchedHeight = stretchedHeight;
+		this.stretchedEnabled = stretchedEnabled;
+		this.viewportWidth = viewportWidth;
+		this.viewportHeight = viewportHeight;
+		this.viewportXOffset = viewportXOffset;
+		this.viewportYOffset = viewportYOffset;
+		this.topLevelInterfaceId = topLevelInterfaceId;
+		this.fps = fps;
+	}
+
+	GeBridgeClientState(
+		boolean loggedIn,
+		int world,
+		List<String> worldTypes,
+		boolean membersWorld,
+		int canvasWidth,
+		int canvasHeight,
+		int canvasScreenX,
+		int canvasScreenY,
+		boolean canvasScreenPositionValid,
+		int viewportWidth,
+		int viewportHeight,
+		int viewportXOffset,
+		int viewportYOffset,
+		int topLevelInterfaceId,
+		int fps)
+	{
+		this(
+			loggedIn,
+			world,
+			worldTypes,
+			membersWorld,
+			canvasWidth,
+			canvasHeight,
+			canvasScreenX,
+			canvasScreenY,
+			canvasScreenPositionValid,
+			canvasWidth,
+			canvasHeight,
+			canvasWidth,
+			canvasHeight,
+			false,
+			viewportWidth,
+			viewportHeight,
+			viewportXOffset,
+			viewportYOffset,
+			topLevelInterfaceId,
+			fps);
+	}
 }
