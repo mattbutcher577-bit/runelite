@@ -159,14 +159,16 @@ public final class GeTradeStateMachine
 				}
 				return GePlannedAction.none();
 			case WAIT_PRICE_VALUE:
-				if (!setupMatches(state, context.candidate, GeTradeSide.BUY))
+				if (!setupMatches(state, context.candidate.getItemId(), context.candidate.getQuantity(),
+					context.candidate.getBuyPrice(), GeTradeSide.BUY))
 				{
 					return GePlannedAction.none();
 				}
 				context.phase = GeTradePhase.WAIT_BUY_SLOT;
 				return action(context, GePlannedActionType.CONFIRM);
 			case WAIT_BUY_SLOT:
-				if (isBuyPlaced(observed, context.candidate))
+				if (isPlaced(observed, context.candidate.getItemId(), context.candidate.getQuantity(),
+					context.candidate.getBuyPrice(), "BUYING", "BOUGHT"))
 				{
 					tradeLedger.markPlaced(context.obligationId, now);
 					tradeLedger.markFilled(context.obligationId, observed.getFilledQuantity());
@@ -179,6 +181,121 @@ public final class GeTradeStateMachine
 				return GePlannedAction.none();
 			case MONITOR_BUY:
 				return monitorBuy(context, observed, now);
+			case WAIT_ABORT_READY:
+				context.phase = GeTradePhase.WAIT_ABORT_RESULT;
+				return action(context, GePlannedActionType.ABORT_BUY);
+			case WAIT_ABORT_RESULT:
+				if ("CANCELLED_BUY".equalsIgnoreCase(observed.getState())
+					|| "BOUGHT".equalsIgnoreCase(observed.getState()))
+				{
+					if ("CANCELLED_BUY".equalsIgnoreCase(observed.getState()))
+					{
+						GeTradeObligation obligation = tradeLedger.get(context.obligationId);
+						if (obligation != null && obligation.getAbortCount() == 0)
+						{
+							tradeLedger.incrementAbortCount(context.obligationId);
+						}
+					}
+					context.phase = GeTradePhase.WAIT_BUY_COLLECT_READY;
+				}
+				return GePlannedAction.none();
+			case WAIT_BUY_COLLECT_READY:
+				context.preCollectInventory = state.getInventoryQuantity(context.candidate.getItemId());
+				context.phase = GeTradePhase.WAIT_BUY_COLLECT_RESULT;
+				return action(context, GePlannedActionType.COLLECT);
+			case WAIT_BUY_COLLECT_RESULT:
+				return finishBuyCollection(context, state, observed, now);
+			case WAIT_SELL_SETUP:
+				if (state.getSetupSide() == GeTradeSide.SELL)
+				{
+					context.phase = GeTradePhase.WAIT_SELL_ITEM_SELECTED;
+					return action(context, GePlannedActionType.SELECT_SELL_ITEM);
+				}
+				return GePlannedAction.none();
+			case WAIT_SELL_ITEM_SELECTED:
+				if (state.getSetupItemId() < 0)
+				{
+					return GePlannedAction.none();
+				}
+				if (state.getSetupItemId() != context.candidate.getItemId())
+				{
+					lastReason = GeReasonCode.SETUP_ITEM_MISMATCH;
+					return GePlannedAction.none();
+				}
+				context.phase = GeTradePhase.WAIT_SELL_QUANTITY_PROMPT;
+				return action(context, GePlannedActionType.OPEN_QUANTITY);
+			case WAIT_SELL_QUANTITY_PROMPT:
+				if (state.getPromptMode() == GePromptMode.QUANTITY)
+				{
+					context.phase = GeTradePhase.WAIT_SELL_QUANTITY_VALUE;
+					return action(context, GePlannedActionType.TYPE_QUANTITY);
+				}
+				return GePlannedAction.none();
+			case WAIT_SELL_QUANTITY_VALUE:
+				if (state.getSetupQuantity() == context.sellQuantity)
+				{
+					context.phase = GeTradePhase.WAIT_SELL_PRICE_PROMPT;
+					return action(context, GePlannedActionType.OPEN_PRICE);
+				}
+				if (state.getSetupQuantity() > 0 && state.getPromptMode() == GePromptMode.NONE)
+				{
+					lastReason = GeReasonCode.SETUP_QUANTITY_MISMATCH;
+				}
+				return GePlannedAction.none();
+			case WAIT_SELL_PRICE_PROMPT:
+				if (state.getPromptMode() == GePromptMode.PRICE)
+				{
+					context.phase = GeTradePhase.WAIT_SELL_PRICE_VALUE;
+					return action(context, GePlannedActionType.TYPE_PRICE);
+				}
+				return GePlannedAction.none();
+			case WAIT_SELL_PRICE_VALUE:
+				if (!setupMatches(state, context.candidate.getItemId(), context.sellQuantity,
+					context.candidate.getSellPrice(), GeTradeSide.SELL))
+				{
+					return GePlannedAction.none();
+				}
+				context.phase = GeTradePhase.WAIT_SELL_SLOT;
+				return action(context, GePlannedActionType.CONFIRM);
+			case WAIT_SELL_SLOT:
+				if (isPlaced(observed, context.candidate.getItemId(), context.sellQuantity,
+					context.candidate.getSellPrice(), "SELLING", "SOLD"))
+				{
+					tradeLedger.markPlaced(context.obligationId, now);
+					tradeLedger.markFilled(context.obligationId, observed.getFilledQuantity());
+					context.phase = GeTradePhase.MONITOR_SELL;
+				}
+				else if (!observed.isEmpty())
+				{
+					lastReason = GeReasonCode.SLOT_IDENTITY_CHANGED;
+				}
+				return GePlannedAction.none();
+			case MONITOR_SELL:
+				if (observed.getItemId() == context.candidate.getItemId())
+				{
+					tradeLedger.markFilled(context.obligationId, observed.getFilledQuantity());
+				}
+				if ("SOLD".equalsIgnoreCase(observed.getState()))
+				{
+					context.phase = GeTradePhase.WAIT_SELL_COLLECT_READY;
+					return action(context, GePlannedActionType.OPEN_OFFER);
+				}
+				return GePlannedAction.none();
+			case WAIT_SELL_COLLECT_READY:
+				context.preCollectGp = state.getGp();
+				context.phase = GeTradePhase.WAIT_SELL_COLLECT_RESULT;
+				return action(context, GePlannedActionType.COLLECT);
+			case WAIT_SELL_COLLECT_RESULT:
+				if (observed.isEmpty() && state.getGp() > context.preCollectGp)
+				{
+					tradeLedger.remove(context.obligationId);
+					context.reset();
+				}
+				else if (observed.isEmpty())
+				{
+					lastReason = GeReasonCode.COLLECT_STATE_MISMATCH;
+				}
+				return GePlannedAction.none();
 			default:
 				return GePlannedAction.none();
 		}
@@ -222,6 +339,7 @@ public final class GeTradeStateMachine
 			candidate.getBuyPrice());
 		context.candidate = candidate;
 		context.obligationId = obligationId;
+		context.side = GeTradeSide.BUY;
 		context.phase = GeTradePhase.WAIT_BUY_SETUP;
 		return action(context, GePlannedActionType.OPEN_BUY);
 	}
@@ -250,32 +368,80 @@ public final class GeTradeStateMachine
 		return GePlannedAction.none();
 	}
 
+	private GePlannedAction finishBuyCollection(
+		SlotContext context,
+		GeObservedState state,
+		GeObservedSlot observed,
+		Instant now)
+	{
+		int after = state.getInventoryQuantity(context.candidate.getItemId());
+		int actualReceived = Math.max(0, after - context.preCollectInventory);
+		if (!observed.isEmpty() || actualReceived <= 0)
+		{
+			if (observed.isEmpty())
+			{
+				lastReason = GeReasonCode.COLLECT_STATE_MISMATCH;
+			}
+			return GePlannedAction.none();
+		}
+
+		GeTradeObligation buy = tradeLedger.get(context.obligationId);
+		String parentId = context.obligationId;
+		limitLedger.recordFill(context.candidate.getItemId(), actualReceived, now);
+		tradeLedger.remove(parentId);
+
+		String sellId = "v6-sell-" + (++obligationSequence);
+		tradeLedger.createSell(
+			sellId,
+			parentId,
+			context.slot,
+			context.candidate.getItemId(),
+			context.candidate.getName(),
+			actualReceived,
+			context.candidate.getSellPrice());
+		context.obligationId = sellId;
+		context.side = GeTradeSide.SELL;
+		context.sellQuantity = actualReceived;
+		context.phase = GeTradePhase.WAIT_SELL_SETUP;
+		return action(context, GePlannedActionType.OPEN_SELL);
+	}
+
 	private GePlannedAction action(SlotContext context, GePlannedActionType type)
 	{
 		GeCandidate candidate = context.candidate;
+		int quantity = context.side == GeTradeSide.SELL ? context.sellQuantity
+			: candidate == null ? 0 : candidate.getQuantity();
+		int price = context.side == GeTradeSide.SELL
+			? candidate == null ? 0 : candidate.getSellPrice()
+			: candidate == null ? 0 : candidate.getBuyPrice();
 		return GePlannedAction.of(
 			type,
 			context.slot,
 			candidate == null ? -1 : candidate.getItemId(),
 			candidate == null ? "" : candidate.getName(),
-			candidate == null ? 0 : candidate.getQuantity(),
-			candidate == null ? 0 : candidate.getBuyPrice(),
+			quantity,
+			price,
 			context.obligationId);
 	}
 
-	private boolean setupMatches(GeObservedState state, GeCandidate candidate, GeTradeSide side)
+	private boolean setupMatches(
+		GeObservedState state,
+		int itemId,
+		int quantity,
+		int price,
+		GeTradeSide side)
 	{
-		if (state.getSetupItemId() != candidate.getItemId())
+		if (state.getSetupItemId() != itemId)
 		{
 			lastReason = GeReasonCode.SETUP_ITEM_MISMATCH;
 			return false;
 		}
-		if (state.getSetupQuantity() != candidate.getQuantity())
+		if (state.getSetupQuantity() != quantity)
 		{
 			lastReason = GeReasonCode.SETUP_QUANTITY_MISMATCH;
 			return false;
 		}
-		if (state.getSetupPrice() != candidate.getBuyPrice())
+		if (state.getSetupPrice() != price)
 		{
 			lastReason = GeReasonCode.SETUP_PRICE_MISMATCH;
 			return false;
@@ -288,13 +454,19 @@ public final class GeTradeStateMachine
 		return true;
 	}
 
-	private static boolean isBuyPlaced(GeObservedSlot observed, GeCandidate candidate)
+	private static boolean isPlaced(
+		GeObservedSlot observed,
+		int itemId,
+		int quantity,
+		int price,
+		String stateA,
+		String stateB)
 	{
 		String state = observed.getState();
-		return ("BUYING".equalsIgnoreCase(state) || "BOUGHT".equalsIgnoreCase(state))
-			&& observed.getItemId() == candidate.getItemId()
-			&& observed.getTotalQuantity() == candidate.getQuantity()
-			&& observed.getPrice() == candidate.getBuyPrice();
+		return (stateA.equalsIgnoreCase(state) || stateB.equalsIgnoreCase(state))
+			&& observed.getItemId() == itemId
+			&& observed.getTotalQuantity() == quantity
+			&& observed.getPrice() == price;
 	}
 
 	private static GeObservedSlot findSlot(GeObservedState state, int slot)
@@ -319,10 +491,25 @@ public final class GeTradeStateMachine
 		private GeTradePhase phase = GeTradePhase.IDLE;
 		private GeCandidate candidate;
 		private String obligationId = "";
+		private GeTradeSide side = GeTradeSide.UNKNOWN;
+		private int sellQuantity;
+		private int preCollectInventory;
+		private long preCollectGp;
 
 		private SlotContext(int slot)
 		{
 			this.slot = slot;
+		}
+
+		private void reset()
+		{
+			phase = GeTradePhase.IDLE;
+			candidate = null;
+			obligationId = "";
+			side = GeTradeSide.UNKNOWN;
+			sellQuantity = 0;
+			preCollectInventory = 0;
+			preCollectGp = 0L;
 		}
 	}
 }
