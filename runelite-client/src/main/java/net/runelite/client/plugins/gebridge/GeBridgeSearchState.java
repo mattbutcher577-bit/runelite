@@ -8,11 +8,16 @@ import lombok.Value;
 class GeBridgeSearchState
 {
 	boolean open;
-	String query;
+	long updatedTick;
 	List<GeBridgeSearchResult> results;
+
+	GeBridgeSearchState(boolean open, String ignoredLegacyQuery, List<GeBridgeSearchResult> results)
+	{
+		this(open, -1L, results);
+	}
 
 	static GeBridgeSearchState closed()
 	{
-		return new GeBridgeSearchState(false, "", Collections.emptyList());
+		return new GeBridgeSearchState(false, -1L, Collections.emptyList());
 	}
 }
