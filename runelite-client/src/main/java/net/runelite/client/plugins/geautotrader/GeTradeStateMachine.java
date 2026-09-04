@@ -89,6 +89,46 @@ public final class GeTradeStateMachine
 		return context == null ? null : context.candidate;
 	}
 
+	int recoverAbandonedBuySetups(GeObservedState state)
+	{
+		int recovered = 0;
+		for (int slot = 1; slot <= 3; slot++)
+		{
+			SlotContext context = contexts.get(slot);
+			GeObservedSlot observed = findSlot(state, slot);
+			if (context == null
+				|| observed == null
+				|| !observed.isEmpty()
+				|| context.side != GeTradeSide.BUY
+				|| !isPrePlacementBuyPhase(context.phase))
+			{
+				continue;
+			}
+
+			tradeLedger.remove(context.obligationId);
+			context.reset();
+			recovered++;
+		}
+		return recovered;
+	}
+
+	private static boolean isPrePlacementBuyPhase(GeTradePhase phase)
+	{
+		switch (phase)
+		{
+			case WAIT_BUY_SETUP:
+			case WAIT_SEARCH_RESULTS:
+			case WAIT_ITEM_SELECTED:
+			case WAIT_QUANTITY_PROMPT:
+			case WAIT_QUANTITY_VALUE:
+			case WAIT_PRICE_PROMPT:
+			case WAIT_PRICE_VALUE:
+				return true;
+			default:
+				return false;
+		}
+	}
+
 	private GePlannedAction step(SlotContext context, GeObservedState state, Instant now)
 	{
 		GeObservedSlot observed = findSlot(state, context.slot);
