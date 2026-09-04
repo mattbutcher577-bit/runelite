@@ -1,8 +1,10 @@
 package net.runelite.client.plugins.gebridge;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -13,6 +15,8 @@ import net.runelite.client.util.Text;
 
 final class GeBridgeWidgetActionResolver
 {
+	private static final int MAX_WIDGETS = 512;
+
 	private GeBridgeWidgetActionResolver()
 	{
 	}
@@ -37,7 +41,41 @@ final class GeBridgeWidgetActionResolver
 
 		List<GeBridgeBounds> results = new ArrayList<>();
 		Set<Widget> seenWidgets = Collections.newSetFromMap(new IdentityHashMap<>());
-		collect(root, accepted, results, seenWidgets);
+		Deque<Widget> queue = new ArrayDeque<>();
+		if (root != null)
+		{
+			queue.add(root);
+		}
+
+		int visited = 0;
+		while (!queue.isEmpty() && visited < MAX_WIDGETS)
+		{
+			Widget widget = queue.removeFirst();
+			if (widget == null || !seenWidgets.add(widget))
+			{
+				continue;
+			}
+			visited++;
+			if (widget.isHidden())
+			{
+				continue;
+			}
+
+			if (matches(widget, accepted))
+			{
+				GeBridgeBounds bounds = GeBridgeBounds.from(widget.getBounds());
+				if (bounds.isValid() && !containsBounds(results, bounds))
+				{
+					results.add(bounds);
+				}
+			}
+
+			enqueue(queue, widget.getChildren());
+			enqueue(queue, widget.getDynamicChildren());
+			enqueue(queue, widget.getStaticChildren());
+			enqueue(queue, widget.getNestedChildren());
+		}
+
 		results.sort(Comparator
 			.comparingInt(GeBridgeBounds::getY)
 			.thenComparingInt(GeBridgeBounds::getX)
@@ -46,37 +84,7 @@ final class GeBridgeWidgetActionResolver
 		return results;
 	}
 
-	private static void collect(
-		Widget widget,
-		Set<String> accepted,
-		List<GeBridgeBounds> results,
-		Set<Widget> seenWidgets)
-	{
-		if (widget == null || widget.isHidden() || !seenWidgets.add(widget))
-		{
-			return;
-		}
-
-		if (matches(widget, accepted))
-		{
-			GeBridgeBounds bounds = GeBridgeBounds.from(widget.getBounds());
-			if (bounds.isValid() && !containsBounds(results, bounds))
-			{
-				results.add(bounds);
-			}
-		}
-
-		collectChildren(widget.getChildren(), accepted, results, seenWidgets);
-		collectChildren(widget.getDynamicChildren(), accepted, results, seenWidgets);
-		collectChildren(widget.getStaticChildren(), accepted, results, seenWidgets);
-		collectChildren(widget.getNestedChildren(), accepted, results, seenWidgets);
-	}
-
-	private static void collectChildren(
-		Widget[] children,
-		Set<String> accepted,
-		List<GeBridgeBounds> results,
-		Set<Widget> seenWidgets)
+	private static void enqueue(Deque<Widget> queue, Widget[] children)
 	{
 		if (children == null)
 		{
@@ -84,7 +92,10 @@ final class GeBridgeWidgetActionResolver
 		}
 		for (Widget child : children)
 		{
-			collect(child, accepted, results, seenWidgets);
+			if (child != null)
+			{
+				queue.addLast(child);
+			}
 		}
 	}
 
