@@ -366,6 +366,7 @@ public final class GeTradeStateMachine
 			market, availableGp, limitLedger, tradeLedger, config, now);
 		if (candidates.isEmpty())
 		{
+			lastReason = GeReasonCode.NO_OPPORTUNITY;
 			return GePlannedAction.none();
 		}
 
