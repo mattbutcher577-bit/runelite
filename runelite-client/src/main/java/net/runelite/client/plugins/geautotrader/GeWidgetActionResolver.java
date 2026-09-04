@@ -26,7 +26,18 @@ public final class GeWidgetActionResolver
 		return all.size() == 1 ? all.get(0) : null;
 	}
 
+	public static GeWidgetActionSpec findUniqueItem(Widget root, int itemId, String... aliases)
+	{
+		List<GeWidgetActionSpec> all = findAllInternal(root, itemId, aliases);
+		return all.size() == 1 ? all.get(0) : null;
+	}
+
 	public static List<GeWidgetActionSpec> findAll(Widget root, String... aliases)
+	{
+		return findAllInternal(root, null, aliases);
+	}
+
+	private static List<GeWidgetActionSpec> findAllInternal(Widget root, Integer requiredItemId, String... aliases)
 	{
 		if (root == null)
 		{
@@ -34,17 +45,16 @@ public final class GeWidgetActionResolver
 		}
 
 		Set<String> accepted = new HashSet<>();
-		for (String alias : aliases)
+		if (aliases != null)
 		{
-			String normalized = normalize(alias);
-			if (!normalized.isEmpty())
+			for (String alias : aliases)
 			{
-				accepted.add(normalized);
+				String normalized = normalize(alias);
+				if (!normalized.isEmpty())
+				{
+					accepted.add(normalized);
+				}
 			}
-		}
-		if (accepted.isEmpty())
-		{
-			return Collections.emptyList();
 		}
 
 		List<GeWidgetActionSpec> result = new ArrayList<>();
@@ -60,24 +70,12 @@ public final class GeWidgetActionResolver
 				continue;
 			}
 
-			String[] actions = widget.getActions();
-			if (actions != null)
+			if (requiredItemId == null || widget.getItemId() == requiredItemId)
 			{
-				for (int i = 0; i < actions.length; i++)
+				GeWidgetActionSpec spec = actionSpec(widget, accepted);
+				if (spec != null)
 				{
-					if (accepted.contains(normalize(actions[i])))
-					{
-						MenuAction type = i < 5 ? MenuAction.CC_OP : MenuAction.CC_OP_LOW_PRIORITY;
-						result.add(new GeWidgetActionSpec(
-							widget.getIndex(),
-							widget.getId(),
-							type,
-							i + 1,
-							widget.getItemId(),
-							actions[i],
-							widget.getName()));
-						break;
-					}
+					result.add(spec);
 				}
 			}
 
@@ -87,6 +85,37 @@ public final class GeWidgetActionResolver
 			enqueue(queue, widget.getNestedChildren());
 		}
 		return result;
+	}
+
+	private static GeWidgetActionSpec actionSpec(Widget widget, Set<String> accepted)
+	{
+		String[] actions = widget.getActions();
+		if (actions == null)
+		{
+			return null;
+		}
+		for (int i = 0; i < actions.length; i++)
+		{
+			String normalized = normalize(actions[i]);
+			if (normalized.isEmpty())
+			{
+				continue;
+			}
+			if (!accepted.isEmpty() && !accepted.contains(normalized))
+			{
+				continue;
+			}
+			MenuAction type = i < 5 ? MenuAction.CC_OP : MenuAction.CC_OP_LOW_PRIORITY;
+			return new GeWidgetActionSpec(
+				widget.getIndex(),
+				widget.getId(),
+				type,
+				i + 1,
+				widget.getItemId(),
+				actions[i],
+				widget.getName());
+		}
+		return null;
 	}
 
 	private static void enqueue(Deque<Widget> queue, Widget[] children)
