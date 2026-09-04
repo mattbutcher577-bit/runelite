@@ -13,6 +13,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
@@ -63,6 +64,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	private GePlannedAction lastAction = GePlannedAction.none();
 	private GeReasonCode lastReason = GeReasonCode.DISABLED;
 	private int loggedInTicks;
+	private boolean restartArmed;
+	private boolean restartRequested;
 
 	@Provides
 	GeAutoTraderConfig provideConfig(ConfigManager configManager)
@@ -74,6 +77,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void startUp()
 	{
 		stopped.set(false);
+		restartArmed = false;
+		restartRequested = false;
 		loggedInTicks = 0;
 		tradeLedger = new GeTradeLedger();
 		limitLedger = new GeLimitLedger();
@@ -101,6 +106,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void shutDown()
 	{
 		stopped.set(true);
+		restartArmed = false;
+		restartRequested = false;
 		keyManager.unregisterKeyListener(this);
 		overlayManager.remove(overlay);
 		if (marketService != null)
@@ -120,6 +127,35 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		loggedInTicks = 0;
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (event == null
+			|| !CONFIG_GROUP.equals(event.getGroup())
+			|| !"enabled".equals(event.getKey()))
+		{
+			return;
+		}
+
+		if (!stopped.get())
+		{
+			restartArmed = false;
+			restartRequested = false;
+			return;
+		}
+
+		boolean enabled = Boolean.parseBoolean(event.getNewValue());
+		if (!enabled)
+		{
+			restartArmed = true;
+			restartRequested = false;
+		}
+		else if (restartArmed)
+		{
+			restartRequested = true;
+		}
 	}
 
 	@Subscribe
@@ -145,6 +181,16 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			marketService.refreshAsync();
 		}
 
+		if (restartRequested && config.enabled() && canCompleteManualRestart(lastState))
+		{
+			stateMachine.recoverAbandonedBuySetups(lastState);
+			stopped.set(false);
+			restartArmed = false;
+			restartRequested = false;
+			lastAction = GePlannedAction.none();
+			lastReason = GeReasonCode.OK;
+		}
+
 		GePlannedAction action = stateMachine.onTick(lastState, Instant.now());
 		lastAction = action;
 		lastReason = stateMachine.getLastReason();
@@ -160,7 +206,20 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			// Fail closed. The state machine has already advanced past the emitted action;
 			// stopping prevents it from acting on an unproved transition.
 			stopped.set(true);
+			restartArmed = false;
+			restartRequested = false;
 		}
+	}
+
+	private static boolean canCompleteManualRestart(GeObservedState state)
+	{
+		return state != null
+			&& state.isLoggedIn()
+			&& state.isLoginSettled()
+			&& state.isGeOpen()
+			&& !state.isBlockerActive()
+			&& state.getSetupSide() == GeTradeSide.UNKNOWN
+			&& state.getPromptMode() == GePromptMode.NONE;
 	}
 
 	@Override
@@ -169,6 +228,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		if (event != null && event.getKeyCode() == KeyEvent.VK_F8)
 		{
 			stopped.set(true);
+			restartArmed = false;
+			restartRequested = false;
 			lastReason = GeReasonCode.STOPPED_F8;
 			event.consume();
 		}
@@ -187,6 +248,11 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	boolean isStopped()
 	{
 		return stopped.get();
+	}
+
+	boolean isRestartRequested()
+	{
+		return restartRequested;
 	}
 
 	String getStatusText()
