@@ -64,6 +64,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	private GePlannedAction lastAction = GePlannedAction.none();
 	private GeReasonCode lastReason = GeReasonCode.DISABLED;
 	private int loggedInTicks;
+	private boolean manualRestartAllowed;
 	private boolean restartArmed;
 	private boolean restartRequested;
 
@@ -77,6 +78,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void startUp()
 	{
 		stopped.set(false);
+		manualRestartAllowed = false;
 		restartArmed = false;
 		restartRequested = false;
 		loggedInTicks = 0;
@@ -106,6 +108,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	protected void shutDown()
 	{
 		stopped.set(true);
+		manualRestartAllowed = false;
 		restartArmed = false;
 		restartRequested = false;
 		keyManager.unregisterKeyListener(this);
@@ -139,7 +142,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			return;
 		}
 
-		if (!stopped.get())
+		if (!stopped.get() || !manualRestartAllowed)
 		{
 			restartArmed = false;
 			restartRequested = false;
@@ -185,6 +188,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		{
 			stateMachine.recoverAbandonedBuySetups(lastState);
 			stopped.set(false);
+			manualRestartAllowed = false;
 			restartArmed = false;
 			restartRequested = false;
 			lastAction = GePlannedAction.none();
@@ -205,9 +209,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			lastReason = executionResult;
 			// Fail closed. The state machine has already advanced past the emitted action;
 			// stopping prevents it from acting on an unproved transition.
-			stopped.set(true);
-			restartArmed = false;
-			restartRequested = false;
+			stopForExecutionFailure();
 		}
 	}
 
@@ -222,12 +224,21 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			&& state.getPromptMode() == GePromptMode.NONE;
 	}
 
+	void stopForExecutionFailure()
+	{
+		stopped.set(true);
+		manualRestartAllowed = false;
+		restartArmed = false;
+		restartRequested = false;
+	}
+
 	@Override
 	public void keyPressed(KeyEvent event)
 	{
 		if (event != null && event.getKeyCode() == KeyEvent.VK_F8)
 		{
 			stopped.set(true);
+			manualRestartAllowed = true;
 			restartArmed = false;
 			restartRequested = false;
 			lastReason = GeReasonCode.STOPPED_F8;
@@ -248,6 +259,11 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	boolean isStopped()
 	{
 		return stopped.get();
+	}
+
+	boolean isManualRestartAllowed()
+	{
+		return manualRestartAllowed;
 	}
 
 	boolean isRestartRequested()
