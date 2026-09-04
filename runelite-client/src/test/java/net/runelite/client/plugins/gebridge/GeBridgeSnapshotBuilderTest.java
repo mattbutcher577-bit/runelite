@@ -100,6 +100,14 @@ public class GeBridgeSnapshotBuilderTest
 		String json = new Gson().toJson(snapshot);
 		assertFalse("protocol 5 must not publish raw GE search text", json.contains("\"query\""));
 		assertFalse("protocol 5 must not publish the typed search value", json.contains("\"Feather\"") && json.contains("\"query\""));
+		assertTrue("v5 must publish real client geometry", json.contains("\"realWidth\""));
+		assertTrue("v5 must publish real client geometry", json.contains("\"realHeight\""));
+		assertTrue("v5 must publish stretched client geometry", json.contains("\"stretchedWidth\""));
+		assertTrue("v5 must publish stretched client geometry", json.contains("\"stretchedHeight\""));
+		assertTrue("v5 must publish stretched-mode state", json.contains("\"stretchedEnabled\""));
+		assertTrue("v5 must identify a bridge instance", json.contains("\"bridgeInstanceId\""));
+		assertTrue("v5 must sequence snapshots", json.contains("\"snapshotSeq\""));
+		assertTrue("search state must carry freshness", json.contains("\"updatedTick\""));
 
 		List<GeBridgeSlot> slots = snapshot.getSlots();
 		assertEquals(1, slots.size());
