@@ -10,10 +10,17 @@ class GeBridgeSnapshot
 {
 	int protocol;
 	long generatedAtEpochMs;
+	long tick;
 	String gameState;
 	List<GeBridgeSlot> slots;
 	List<GeBridgeInventoryItem> inventory;
 	int inventoryGp;
+	GeBridgeClientState client;
+	GeBridgePlayerState player;
+	GeBridgeInterfaceState interfaces;
+	GeBridgeGeState ge;
+	GeBridgeInventoryState inventoryState;
+	GeBridgeSafetyState safety;
 
 	Map<Integer, Integer> inventoryAsMap()
 	{
