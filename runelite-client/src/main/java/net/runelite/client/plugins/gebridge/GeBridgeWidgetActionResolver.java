@@ -1,10 +1,10 @@
 package net.runelite.client.plugins.gebridge;
 
-import java.awt.Rectangle;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -36,7 +36,8 @@ final class GeBridgeWidgetActionResolver
 		}
 
 		List<GeBridgeBounds> results = new ArrayList<>();
-		collect(root, accepted, results, new HashSet<>());
+		Set<Widget> seenWidgets = Collections.newSetFromMap(new IdentityHashMap<>());
+		collect(root, accepted, results, seenWidgets);
 		results.sort(Comparator
 			.comparingInt(GeBridgeBounds::getY)
 			.thenComparingInt(GeBridgeBounds::getX)
@@ -49,15 +50,9 @@ final class GeBridgeWidgetActionResolver
 		Widget widget,
 		Set<String> accepted,
 		List<GeBridgeBounds> results,
-		Set<Integer> seenWidgetIds)
+		Set<Widget> seenWidgets)
 	{
-		if (widget == null || widget.isHidden())
-		{
-			return;
-		}
-
-		int id = widget.getId();
-		if (id != -1 && !seenWidgetIds.add(id))
+		if (widget == null || widget.isHidden() || !seenWidgets.add(widget))
 		{
 			return;
 		}
@@ -76,7 +71,7 @@ final class GeBridgeWidgetActionResolver
 		{
 			for (Widget child : children)
 			{
-				collect(child, accepted, results, seenWidgetIds);
+				collect(child, accepted, results, seenWidgets);
 			}
 		}
 	}
