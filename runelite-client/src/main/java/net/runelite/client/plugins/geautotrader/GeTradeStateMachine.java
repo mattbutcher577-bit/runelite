@@ -115,7 +115,8 @@ public final class GeTradeStateMachine
 					context.phase = GeTradePhase.WAIT_ITEM_SELECTED;
 					return step(context, state, now);
 				}
-				if (state.getPromptMode() == GePromptMode.NONE)
+				if (state.hasSearchResult(context.candidate.getItemId())
+					|| state.getPromptMode() == GePromptMode.NONE)
 				{
 					context.phase = GeTradePhase.WAIT_ITEM_SELECTED;
 					return action(context, GePlannedActionType.SELECT_ITEM);
@@ -385,7 +386,6 @@ public final class GeTradeStateMachine
 			return GePlannedAction.none();
 		}
 
-		GeTradeObligation buy = tradeLedger.get(context.obligationId);
 		String parentId = context.obligationId;
 		limitLedger.recordFill(context.candidate.getItemId(), actualReceived, now);
 		tradeLedger.remove(parentId);
