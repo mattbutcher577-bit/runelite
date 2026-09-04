@@ -33,7 +33,9 @@ public class GeBridgeHttpServerTest
 			Collections.emptyList(),
 			0,
 			new GeBridgeClientState(
-				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
+				true, 301, Collections.emptyList(), false,
+				773, 535, 104, 232, true,
+				765, 503, 4, 4, 548, 50),
 			new GeBridgePlayerState(true, 3164, 3487, 0),
 			new GeBridgeInterfaceState(true, true, false, false, false, true, false),
 			new GeBridgeGeState(
@@ -68,6 +70,9 @@ public class GeBridgeHttpServerTest
 			}
 			assertTrue(body.contains("\"protocol\":4"));
 			assertTrue(body.contains("\"gameState\":\"LOGGED_IN\""));
+			assertTrue(body.contains("\"canvasScreenX\":104"));
+			assertTrue(body.contains("\"canvasScreenY\":232"));
+			assertTrue(body.contains("\"canvasScreenPositionValid\":true"));
 			assertTrue(body.contains("\"mouseX\":400"));
 			assertTrue(body.contains("\"search\":{"));
 			assertTrue(body.contains("\"query\":\"Feather\""));
