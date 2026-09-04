@@ -204,6 +204,11 @@ public final class GeTradeStateMachine
 			lastReason = GeReasonCode.UI_STATE_TIMEOUT;
 			return GePlannedAction.none();
 		}
+		if ((context.phase == GeTradePhase.MONITOR_BUY || context.phase == GeTradePhase.MONITOR_SELL)
+			&& anotherSetupWorkflowInProgress(context.slot))
+		{
+			return GePlannedAction.none();
+		}
 
 		switch (context.phase)
 		{
