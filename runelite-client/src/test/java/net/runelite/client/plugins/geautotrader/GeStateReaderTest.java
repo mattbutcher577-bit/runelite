@@ -86,6 +86,21 @@ public class GeStateReaderTest
 	}
 
 	@Test
+	public void testBuySetupWithoutItemFallsBackToItemSearchWhenMesLayerIsNone()
+	{
+		Client client = baseClient();
+		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
+		when(client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH)).thenReturn(-1);
+		when(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE)).thenReturn(0);
+		when(client.getVarcIntValue(VarClientID.MESLAYERMODE)).thenReturn(InputType.NONE.getType());
+
+		GeObservedState state = new GeStateReader(client).read(true);
+		assertEquals(-1, state.getSetupItemId());
+		assertEquals(GeTradeSide.BUY, state.getSetupSide());
+		assertEquals(GePromptMode.ITEM_SEARCH, state.getPromptMode());
+	}
+
+	@Test
 	public void testReadsExactSearchResultItemIdsWhileSearchRemainsOpen()
 	{
 		Client client = baseClient();
