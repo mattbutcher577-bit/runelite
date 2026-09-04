@@ -56,6 +56,22 @@ public class GeBridgeWidgetActionResolverTest
 	}
 
 	@Test
+	public void testStaticAndNestedChildrenAreTraversed()
+	{
+		Widget root = mock(Widget.class);
+		Widget staticBuy = widget(new Rectangle(100, 100, 40, 24), new String[]{"Buy"}, "", "");
+		Widget nestedBuy = widget(new Rectangle(200, 100, 40, 24), new String[]{"Buy"}, "", "");
+		when(root.isHidden()).thenReturn(false);
+		when(root.getStaticChildren()).thenReturn(new Widget[]{staticBuy});
+		when(root.getNestedChildren()).thenReturn(new Widget[]{nestedBuy});
+
+		List<GeBridgeBounds> bounds = GeBridgeWidgetActionResolver.findAll(root, "Buy");
+		assertEquals(2, bounds.size());
+		assertEquals(100, bounds.get(0).getX());
+		assertEquals(200, bounds.get(1).getX());
+	}
+
+	@Test
 	public void testHiddenOrInvalidBoundsAreIgnored()
 	{
 		Widget root = mock(Widget.class);
