@@ -48,4 +48,9 @@ public final class GeObservedSlot
 	{
 		return price;
 	}
+
+	public boolean isEmpty()
+	{
+		return "EMPTY".equalsIgnoreCase(state);
+	}
 }
