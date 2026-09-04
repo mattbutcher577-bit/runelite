@@ -118,6 +118,16 @@ public final class GeStateReader
 		{
 			return GePromptMode.ITEM_SEARCH;
 		}
+		if (messageLayerMode == InputType.NONE.getType())
+		{
+			if (setupSide == GeTradeSide.BUY
+				&& setupItemId < 0
+				&& isVisible(WidgetInfo.CHATBOX_FULL_INPUT))
+			{
+				return GePromptMode.ITEM_SEARCH;
+			}
+			return GePromptMode.NONE;
+		}
 
 		Widget promptWidget = client.getWidget(WidgetInfo.CHATBOX_TITLE);
 		String prompt = promptWidget == null ? null : Text.removeTags(promptWidget.getText());
@@ -130,17 +140,11 @@ public final class GeStateReader
 		{
 			return GePromptMode.PRICE;
 		}
-
 		if (setupSide == GeTradeSide.BUY
 			&& setupItemId < 0
 			&& isVisible(WidgetInfo.CHATBOX_FULL_INPUT))
 		{
 			return GePromptMode.ITEM_SEARCH;
-		}
-
-		if (messageLayerMode == InputType.NONE.getType())
-		{
-			return GePromptMode.NONE;
 		}
 		return GePromptMode.UNKNOWN;
 	}
