@@ -29,6 +29,8 @@ class GeBridgeLiveGeSections
 			messageLayerMode,
 			prompt,
 			inputField,
+			false,
+			-1,
 			window,
 			setup,
 			inventory,
@@ -49,13 +51,49 @@ class GeBridgeLiveGeSections
 		GrandExchangeOffer[] offers,
 		long tick)
 	{
+		return read(
+			offerSetupOpen,
+			messageLayerMode,
+			prompt,
+			inputField,
+			false,
+			-1,
+			window,
+			setup,
+			inventory,
+			itemManager,
+			offers,
+			tick);
+	}
+
+	static GeBridgeLiveGeSections read(
+		boolean offerSetupOpen,
+		int messageLayerMode,
+		Widget prompt,
+		Widget inputField,
+		boolean buySetup,
+		int setupItemId,
+		Widget window,
+		Widget setup,
+		Widget inventory,
+		ItemManager itemManager,
+		GrandExchangeOffer[] offers,
+		long tick)
+	{
 		String promptText = prompt == null ? null : Text.removeTags(prompt.getText());
 		if (promptText != null)
 		{
 			promptText = promptText.trim();
 		}
 
-		String mode = GeBridgeGeInputClassifier.classify(offerSetupOpen, messageLayerMode, promptText);
+		boolean fullInputVisible = inputField != null && !inputField.isHidden();
+		String mode = GeBridgeGeInputClassifier.classify(
+			offerSetupOpen,
+			messageLayerMode,
+			promptText,
+			fullInputVisible,
+			buySetup,
+			setupItemId);
 		GeBridgeGeInputState geInput = new GeBridgeGeInputState(
 			mode,
 			tick,
