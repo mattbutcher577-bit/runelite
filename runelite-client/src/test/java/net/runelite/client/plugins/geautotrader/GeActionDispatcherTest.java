@@ -37,95 +37,143 @@ public class GeActionDispatcherTest
 		when(name.getItemId()).thenReturn(-1);
 		when(name.getName()).thenReturn("Adamant platebody");
 
-		GeExecutionService execution = new GeExecutionService(client, () -> false);
-		GePromptInputService input = new GePromptInputService(new Canvas(), () -> false);
-		GeActionDispatcher dispatcher = new GeActionDispatcher(client, execution, input);
-
-		GePlannedAction action = GePlannedAction.of(
-			GePlannedActionType.SELECT_ITEM,
-			1,
-			1127,
-			"Adamant platebody",
-			125,
-			9001,
-			"v6-buy-1");
+		GeActionDispatcher dispatcher = dispatcher(client);
+		GePlannedAction action = action(GePlannedActionType.SELECT_ITEM, 1127, "Adamant platebody");
 
 		assertEquals(GeReasonCode.OK, dispatcher.dispatch(action, null));
-		verify(client).menuAction(
-			4,
-			12345,
-			MenuAction.CC_OP,
-			1,
-			-1,
-			"Select",
-			"Adamant platebody");
+		verify(client).menuAction(4, 12345, MenuAction.CC_OP, 1, -1, "Select", "Adamant platebody");
 	}
 
 	@Test
 	public void testOpenBuyRecognizesCreateBuyOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
-		Widget buy = mock(Widget.class);
-
-		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
-		when(window.getActions()).thenReturn(null);
-		when(window.getChildren()).thenReturn(new Widget[]{buy});
-
-		when(buy.isHidden()).thenReturn(false);
-		when(buy.getActions()).thenReturn(new String[]{"Create Buy offer"});
+		Widget buy = slotWidget(client, "Create Buy offer");
 		when(buy.getIndex()).thenReturn(7);
 		when(buy.getId()).thenReturn(54321);
-		when(buy.getItemId()).thenReturn(-1);
-		when(buy.getName()).thenReturn("");
 
-		GeActionDispatcher dispatcher = dispatcher(client);
-		GeObservedState state = emptySlotState();
-		GePlannedAction action = openBuyAction();
-
-		assertEquals(GeReasonCode.OK, dispatcher.dispatch(action, state));
-		verify(client).menuAction(
-			7,
-			54321,
-			MenuAction.CC_OP,
-			1,
-			-1,
-			"Create Buy offer",
-			"");
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(openBuyAction(), emptySlotState()));
+		verify(client).menuAction(7, 54321, MenuAction.CC_OP, 1, -1, "Create Buy offer", "");
 	}
 
 	@Test
 	public void testOpenBuyRecognizesTaggedCreateBuyOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
-		Widget buy = mock(Widget.class);
 		String liveAction = "<col=ff9040>Create Buy offer</col>";
-
-		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
-		when(window.getActions()).thenReturn(null);
-		when(window.getChildren()).thenReturn(new Widget[]{buy});
-
-		when(buy.isHidden()).thenReturn(false);
-		when(buy.getActions()).thenReturn(new String[]{liveAction});
+		Widget buy = slotWidget(client, liveAction);
 		when(buy.getIndex()).thenReturn(7);
 		when(buy.getId()).thenReturn(54321);
-		when(buy.getItemId()).thenReturn(-1);
-		when(buy.getName()).thenReturn("");
 
-		GeActionDispatcher dispatcher = dispatcher(client);
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(openBuyAction(), emptySlotState()));
+		verify(client).menuAction(7, 54321, MenuAction.CC_OP, 1, -1, liveAction, "");
+	}
 
-		assertEquals(GeReasonCode.OK, dispatcher.dispatch(openBuyAction(), emptySlotState()));
-		verify(client).menuAction(
-			7,
-			54321,
-			MenuAction.CC_OP,
-			1,
-			-1,
-			liveAction,
-			"");
+	@Test
+	public void testOpenSellRecognizesCreateSellOfferAction()
+	{
+		Client client = mock(Client.class);
+		Widget sell = slotWidget(client, "Create Sell offer");
+		when(sell.getIndex()).thenReturn(8);
+		when(sell.getId()).thenReturn(54322);
+
+		GePlannedAction action = action(GePlannedActionType.OPEN_SELL, 1982, "Tomato");
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, emptySlotState()));
+		verify(client).menuAction(8, 54322, MenuAction.CC_OP, 1, -1, "Create Sell offer", "");
+	}
+
+	@Test
+	public void testOpenOfferUsesNonEmptySlotViewAction()
+	{
+		Client client = mock(Client.class);
+		Widget view = slotWidget(client, "View offer");
+		when(view.getIndex()).thenReturn(9);
+		when(view.getId()).thenReturn(54323);
+
+		GePlannedAction action = action(GePlannedActionType.OPEN_OFFER, 1982, "Tomato");
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, nonEmptySlotState()));
+		verify(client).menuAction(9, 54323, MenuAction.CC_OP, 1, -1, "View offer", "");
+	}
+
+	@Test
+	public void testSelectSellItemRequiresExactInventoryItemId()
+	{
+		Client client = mock(Client.class);
+		Widget root = mock(Widget.class);
+		Widget item = mock(Widget.class);
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER)).thenReturn(root);
+		when(root.isHidden()).thenReturn(false);
+		when(root.getChildren()).thenReturn(new Widget[]{item});
+		when(item.isHidden()).thenReturn(false);
+		when(item.getItemId()).thenReturn(1982);
+		when(item.getActions()).thenReturn(new String[]{"Offer"});
+		when(item.getIndex()).thenReturn(5);
+		when(item.getId()).thenReturn(60001);
+		when(item.getName()).thenReturn("Tomato");
+
+		GePlannedAction action = action(GePlannedActionType.SELECT_SELL_ITEM, 1982, "Tomato");
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, null));
+		verify(client).menuAction(5, 60001, MenuAction.CC_OP, 1, 1982, "Offer", "Tomato");
+	}
+
+	@Test
+	public void testSetupLifecycleActionsResolveExactWidgetTargets()
+	{
+		assertSetupAction(GePlannedActionType.OPEN_QUANTITY, "Set quantity");
+		assertSetupAction(GePlannedActionType.OPEN_PRICE, "Set price");
+		assertSetupAction(GePlannedActionType.CONFIRM, "Confirm");
+		assertSetupAction(GePlannedActionType.ABORT_BUY, "Abort offer");
+		assertSetupAction(GePlannedActionType.COLLECT, "Collect items");
+	}
+
+	@Test
+	public void testDuplicateSetupTargetsFailClosed()
+	{
+		Client client = mock(Client.class);
+		Widget root = mock(Widget.class);
+		Widget a = actionWidget("Confirm", 3, 44444, -1, "");
+		Widget b = actionWidget("Confirm", 4, 44445, -1, "");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(root);
+		when(root.isHidden()).thenReturn(false);
+		when(root.getChildren()).thenReturn(new Widget[]{a, b});
+
+		assertEquals(GeReasonCode.EXECUTION_TARGET_UNAVAILABLE,
+			dispatcher(client).dispatch(action(GePlannedActionType.CONFIRM, 1982, "Tomato"), null));
+	}
+
+	private static void assertSetupAction(GePlannedActionType type, String alias)
+	{
+		Client client = mock(Client.class);
+		Widget root = mock(Widget.class);
+		Widget target = actionWidget(alias, 3, 44444, -1, "");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(root);
+		when(root.isHidden()).thenReturn(false);
+		when(root.getChildren()).thenReturn(new Widget[]{target});
+
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action(type, 1982, "Tomato"), null));
+		verify(client).menuAction(3, 44444, MenuAction.CC_OP, 1, -1, alias, "");
+	}
+
+	private static Widget slotWidget(Client client, String alias)
+	{
+		Widget window = mock(Widget.class);
+		Widget target = actionWidget(alias, 0, 0, -1, "");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getChildren()).thenReturn(new Widget[]{target});
+		return target;
+	}
+
+	private static Widget actionWidget(String alias, int index, int id, int itemId, String name)
+	{
+		Widget widget = mock(Widget.class);
+		when(widget.isHidden()).thenReturn(false);
+		when(widget.getActions()).thenReturn(new String[]{alias});
+		when(widget.getIndex()).thenReturn(index);
+		when(widget.getId()).thenReturn(id);
+		when(widget.getItemId()).thenReturn(itemId);
+		when(widget.getName()).thenReturn(name);
+		return widget;
 	}
 
 	private static GeActionDispatcher dispatcher(Client client)
@@ -138,28 +186,26 @@ public class GeActionDispatcherTest
 	private static GeObservedState emptySlotState()
 	{
 		return new GeObservedState(
-			true,
-			false,
-			true,
-			true,
-			false,
-			2_000_000L,
+			true, false, true, true, false, 2_000_000L,
 			Collections.singletonList(new GeObservedSlot(1, "EMPTY", -1, 0, 0, 0)),
-			-1,
-			0,
-			0,
-			GeTradeSide.UNKNOWN);
+			-1, 0, 0, GeTradeSide.UNKNOWN);
+	}
+
+	private static GeObservedState nonEmptySlotState()
+	{
+		return new GeObservedState(
+			true, false, true, true, false, 2_000_000L,
+			Collections.singletonList(new GeObservedSlot(1, "BOUGHT", 1982, 100, 100, 160)),
+			-1, 0, 0, GeTradeSide.UNKNOWN);
 	}
 
 	private static GePlannedAction openBuyAction()
 	{
-		return GePlannedAction.of(
-			GePlannedActionType.OPEN_BUY,
-			1,
-			1127,
-			"Adamant platebody",
-			125,
-			9001,
-			"v6-buy-1");
+		return action(GePlannedActionType.OPEN_BUY, 1127, "Adamant platebody");
+	}
+
+	private static GePlannedAction action(GePlannedActionType type, int itemId, String name)
+	{
+		return GePlannedAction.of(type, 1, itemId, name, 100, 160, "v6-test-1");
 	}
 }
