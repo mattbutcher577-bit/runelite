@@ -62,7 +62,7 @@ public final class GeStateReader
 		GeTradeSide setupSide = setupOpen
 			? offerSide(client.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE))
 			: GeTradeSide.UNKNOWN;
-		GePromptMode promptMode = classifyPrompt(setupOpen);
+		GePromptMode promptMode = classifyPrompt(setupOpen, setupItemId, setupSide);
 
 		return new GeObservedState(
 			loggedIn,
@@ -106,20 +106,24 @@ public final class GeStateReader
 		return result;
 	}
 
-	private GePromptMode classifyPrompt(boolean setupOpen)
+	private GePromptMode classifyPrompt(boolean setupOpen, int setupItemId, GeTradeSide setupSide)
 	{
 		if (!setupOpen)
 		{
 			return GePromptMode.NONE;
 		}
 		int messageLayerMode = client.getVarcIntValue(VarClientID.MESLAYERMODE);
-		if (messageLayerMode == InputType.NONE.getType())
-		{
-			return GePromptMode.NONE;
-		}
 		if (messageLayerMode == InputType.SEARCH.getType())
 		{
 			return GePromptMode.ITEM_SEARCH;
+		}
+		if (messageLayerMode == InputType.NONE.getType())
+		{
+			if (setupSide == GeTradeSide.BUY && setupItemId < 0)
+			{
+				return GePromptMode.ITEM_SEARCH;
+			}
+			return GePromptMode.NONE;
 		}
 
 		Widget promptWidget = client.getWidget(WidgetInfo.CHATBOX_TITLE);
