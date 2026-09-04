@@ -22,6 +22,31 @@ class GeBridgeBounds
 		return new GeBridgeBounds(rectangle.x, rectangle.y, rectangle.width, rectangle.height, true);
 	}
 
+	static GeBridgeBounds union(GeBridgeBounds... bounds)
+	{
+		int minX = Integer.MAX_VALUE;
+		int minY = Integer.MAX_VALUE;
+		int maxX = Integer.MIN_VALUE;
+		int maxY = Integer.MIN_VALUE;
+		boolean any = false;
+		if (bounds != null)
+		{
+			for (GeBridgeBounds bound : bounds)
+			{
+				if (bound == null || !bound.isValid())
+				{
+					continue;
+				}
+				any = true;
+				minX = Math.min(minX, bound.getX());
+				minY = Math.min(minY, bound.getY());
+				maxX = Math.max(maxX, bound.getX() + bound.getWidth());
+				maxY = Math.max(maxY, bound.getY() + bound.getHeight());
+			}
+		}
+		return any ? new GeBridgeBounds(minX, minY, maxX - minX, maxY - minY, true) : invalid();
+	}
+
 	static GeBridgeBounds invalid()
 	{
 		return new GeBridgeBounds(-1, -1, 0, 0, false);
