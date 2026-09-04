@@ -59,6 +59,12 @@ public class GeBridgeSnapshotBuilderTest
 			"Feather",
 			Collections.singletonList(result));
 
+		GeBridgeGeState geState = new GeBridgeGeState(
+			true, true, 314, 1000, 12, "BUY",
+			new GeBridgeBounds(20, 20, 500, 360, true),
+			new GeBridgeBounds(40, 80, 440, 280, true),
+			new GeBridgeBounds(550, 200, 180, 250, true));
+
 		GeBridgeSnapshot snapshot = GeBridgeSnapshotBuilder.build(
 			GameState.LOGGED_IN,
 			new GrandExchangeOffer[]{offer},
@@ -71,11 +77,7 @@ public class GeBridgeSnapshotBuilderTest
 				765, 503, 4, 4, 548, 50),
 			new GeBridgePlayerState(true, 3164, 3487, 0),
 			new GeBridgeInterfaceState(true, true, false, false, false, true, false),
-			new GeBridgeGeState(
-				true, true, -1,
-				new GeBridgeBounds(20, 20, 500, 360, true),
-				new GeBridgeBounds(40, 80, 440, 280, true),
-				new GeBridgeBounds(550, 200, 180, 250, true)),
+			geState,
 			new GeBridgeSafetyState(true, true, false, false),
 			new GeBridgeInputState(
 				123456700L, 123456600L, 123456700L, 123456650L,
@@ -96,6 +98,10 @@ public class GeBridgeSnapshotBuilderTest
 		assertEquals(314, snapshot.getSearch().getResults().get(0).getItemId());
 		assertEquals("Feather", snapshot.getSearch().getResults().get(0).getName());
 		assertTrue(snapshot.getSearch().getResults().get(0).getNameBounds().isValid());
+		assertEquals(314, snapshot.getGe().getOfferSetupItemId());
+		assertEquals(1000, snapshot.getGe().getOfferSetupQuantity());
+		assertEquals(12, snapshot.getGe().getOfferSetupPrice());
+		assertEquals("BUY", snapshot.getGe().getOfferSetupType());
 
 		String json = new Gson().toJson(snapshot);
 		assertFalse("protocol 5 must not publish raw GE search text", json.contains("\"query\""));
@@ -108,6 +114,9 @@ public class GeBridgeSnapshotBuilderTest
 		assertTrue("v5 must identify a bridge instance", json.contains("\"bridgeInstanceId\""));
 		assertTrue("v5 must sequence snapshots", json.contains("\"snapshotSeq\""));
 		assertTrue("search state must carry freshness", json.contains("\"updatedTick\""));
+		assertTrue("v5 must publish setup quantity", json.contains("\"offerSetupQuantity\":1000"));
+		assertTrue("v5 must publish setup price", json.contains("\"offerSetupPrice\":12"));
+		assertTrue("v5 must publish setup type", json.contains("\"offerSetupType\":\"BUY\""));
 
 		List<GeBridgeSlot> slots = snapshot.getSlots();
 		assertEquals(1, slots.size());
