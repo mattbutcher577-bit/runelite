@@ -86,7 +86,7 @@ public class GeStateReaderTest
 	}
 
 	@Test
-	public void testBuySetupWithoutItemFallsBackToItemSearchWhenMesLayerIsNone()
+	public void testBuySetupWithoutLiveInputEvidenceStaysNoneWhenMesLayerIsNone()
 	{
 		Client client = baseClient();
 		visible(client, WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
@@ -97,7 +97,7 @@ public class GeStateReaderTest
 		GeObservedState state = new GeStateReader(client).read(true);
 		assertEquals(-1, state.getSetupItemId());
 		assertEquals(GeTradeSide.BUY, state.getSetupSide());
-		assertEquals(GePromptMode.ITEM_SEARCH, state.getPromptMode());
+		assertEquals(GePromptMode.NONE, state.getPromptMode());
 	}
 
 	@Test
