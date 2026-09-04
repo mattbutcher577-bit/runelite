@@ -179,6 +179,16 @@ public final class GeTradeStateMachine
 			&& now.isAfter(context.phaseEnteredAt.plus(UI_PROOF_TIMEOUT));
 	}
 
+	private static boolean hasCompletedAbortResult(SlotContext context, GeObservedSlot observed)
+	{
+		if (context.phase != GeTradePhase.WAIT_ABORT_RESULT || observed == null)
+		{
+			return false;
+		}
+		String state = observed.getState();
+		return "CANCELLED_BUY".equalsIgnoreCase(state) || "BOUGHT".equalsIgnoreCase(state);
+	}
+
 	private boolean anotherSetupWorkflowInProgress(int slot)
 	{
 		for (SlotContext other : contexts.values())
@@ -199,7 +209,7 @@ public final class GeTradeStateMachine
 			lastReason = GeReasonCode.SLOT_IDENTITY_CHANGED;
 			return GePlannedAction.none();
 		}
-		if (isUiProofTimedOut(context, now))
+		if (isUiProofTimedOut(context, now) && !hasCompletedAbortResult(context, observed))
 		{
 			lastReason = GeReasonCode.UI_STATE_TIMEOUT;
 			return GePlannedAction.none();
@@ -606,13 +616,13 @@ public final class GeTradeStateMachine
 	{
 		private final int slot;
 		private GeTradePhase phase = GeTradePhase.IDLE;
-		private Instant phaseEnteredAt;
 		private GeCandidate candidate;
 		private String obligationId = "";
 		private GeTradeSide side = GeTradeSide.UNKNOWN;
 		private int sellQuantity;
 		private int preCollectInventory;
 		private long preCollectGp;
+		private Instant phaseEnteredAt;
 
 		private SlotContext(int slot)
 		{
@@ -622,13 +632,13 @@ public final class GeTradeStateMachine
 		private void reset()
 		{
 			phase = GeTradePhase.IDLE;
-			phaseEnteredAt = null;
 			candidate = null;
 			obligationId = "";
 			side = GeTradeSide.UNKNOWN;
 			sellQuantity = 0;
 			preCollectInventory = 0;
 			preCollectGp = 0L;
+			phaseEnteredAt = null;
 		}
 	}
 }
