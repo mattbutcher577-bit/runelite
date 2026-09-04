@@ -33,6 +33,39 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeInputState inputState,
 		GeBridgeSearchState searchState)
 	{
+		return build(
+			gameState,
+			offers,
+			inventory,
+			generatedAtEpochMs,
+			tick,
+			"",
+			0L,
+			clientState,
+			playerState,
+			interfaceState,
+			geState,
+			safetyState,
+			inputState,
+			searchState);
+	}
+
+	static GeBridgeSnapshot build(
+		GameState gameState,
+		GrandExchangeOffer[] offers,
+		Item[] inventory,
+		long generatedAtEpochMs,
+		long tick,
+		String bridgeInstanceId,
+		long snapshotSeq,
+		GeBridgeClientState clientState,
+		GeBridgePlayerState playerState,
+		GeBridgeInterfaceState interfaceState,
+		GeBridgeGeState geState,
+		GeBridgeSafetyState safetyState,
+		GeBridgeInputState inputState,
+		GeBridgeSearchState searchState)
+	{
 		List<GeBridgeSlot> slots = new ArrayList<>();
 		if (offers != null)
 		{
@@ -74,6 +107,8 @@ final class GeBridgeSnapshotBuilder
 			PROTOCOL,
 			generatedAtEpochMs,
 			tick,
+			bridgeInstanceId == null ? "" : bridgeInstanceId,
+			snapshotSeq,
 			gameState == null ? GameState.UNKNOWN.name() : gameState.name(),
 			slots,
 			inventoryItems,
