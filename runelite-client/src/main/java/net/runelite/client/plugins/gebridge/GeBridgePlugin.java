@@ -1,6 +1,9 @@
 package net.runelite.client.plugins.gebridge;
 
 import com.google.gson.Gson;
+import java.awt.Canvas;
+import java.awt.IllegalComponentStateException;
+import java.awt.Point;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -216,6 +219,11 @@ public class GeBridgePlugin extends Plugin
 		}
 		Collections.sort(worldTypes);
 
+		Point canvasScreenPoint = canvasScreenPoint();
+		boolean canvasScreenPositionValid = canvasScreenPoint != null;
+		int canvasScreenX = canvasScreenPositionValid ? canvasScreenPoint.x : -1;
+		int canvasScreenY = canvasScreenPositionValid ? canvasScreenPoint.y : -1;
+
 		return new GeBridgeClientState(
 			gameState == GameState.LOGGED_IN && loggedInTickSeen,
 			client.getWorld(),
@@ -223,6 +231,9 @@ public class GeBridgePlugin extends Plugin
 			client.getWorldType().contains(WorldType.MEMBERS),
 			client.getCanvasWidth(),
 			client.getCanvasHeight(),
+			canvasScreenX,
+			canvasScreenY,
+			canvasScreenPositionValid,
 			client.getViewportWidth(),
 			client.getViewportHeight(),
 			client.getViewportXOffset(),
@@ -230,6 +241,24 @@ public class GeBridgePlugin extends Plugin
 			client.getTopLevelInterfaceId(),
 			client.getFPS()
 		);
+	}
+
+	private Point canvasScreenPoint()
+	{
+		Canvas canvas = client.getCanvas();
+		if (canvas == null || !canvas.isShowing())
+		{
+			return null;
+		}
+
+		try
+		{
+			return canvas.getLocationOnScreen();
+		}
+		catch (IllegalComponentStateException ex)
+		{
+			return null;
+		}
 	}
 
 	private GeBridgePlayerState readPlayerState()
@@ -397,20 +426,7 @@ public class GeBridgePlugin extends Plugin
 
 	private void publishUnavailableSnapshot(GameState gameState)
 	{
-		GeBridgeClientState clientState = new GeBridgeClientState(
-			false,
-			client.getWorld(),
-			Collections.emptyList(),
-			false,
-			client.getCanvasWidth(),
-			client.getCanvasHeight(),
-			client.getViewportWidth(),
-			client.getViewportHeight(),
-			client.getViewportXOffset(),
-			client.getViewportYOffset(),
-			client.getTopLevelInterfaceId(),
-			client.getFPS()
-		);
+		GeBridgeClientState clientState = readClientState(gameState);
 		GeBridgeInterfaceState interfaceState = new GeBridgeInterfaceState(
 			false, false, false, false, false, false, false);
 		GeBridgeGeState geState = new GeBridgeGeState(
