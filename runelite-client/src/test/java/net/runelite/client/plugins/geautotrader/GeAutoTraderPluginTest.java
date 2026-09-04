@@ -21,6 +21,7 @@ public class GeAutoTraderPluginTest
 		plugin.keyPressed(event);
 		assertTrue(plugin.isStopped());
 		assertTrue(plugin.isManualRestartAllowed());
+		assertEquals(GeReasonCode.STOPPED_F8, plugin.getLastReason());
 		assertTrue(event.isConsumed());
 	}
 
@@ -60,6 +61,18 @@ public class GeAutoTraderPluginTest
 	}
 
 	@Test
+	public void testExecutionFailurePreservesTrueReason() throws Exception
+	{
+		GeAutoTraderPlugin plugin = new GeAutoTraderPlugin();
+		setLastReason(plugin, GeReasonCode.EXECUTION_TARGET_UNAVAILABLE);
+		plugin.stopForExecutionFailure();
+
+		assertTrue(plugin.isStopped());
+		assertFalse(plugin.isManualRestartAllowed());
+		assertEquals(GeReasonCode.EXECUTION_TARGET_UNAVAILABLE, plugin.getLastReason());
+	}
+
+	@Test
 	public void testNoOpportunityIsReportedAsRunningScanState() throws Exception
 	{
 		GeReasonCode noOpportunity = null;
@@ -77,11 +90,16 @@ public class GeAutoTraderPluginTest
 		Field configField = GeAutoTraderPlugin.class.getDeclaredField("config");
 		configField.setAccessible(true);
 		configField.set(plugin, enabledConfig());
-		Field reasonField = GeAutoTraderPlugin.class.getDeclaredField("lastReason");
-		reasonField.setAccessible(true);
-		reasonField.set(plugin, noOpportunity);
+		setLastReason(plugin, noOpportunity);
 
 		assertEquals("RUNNING", plugin.getStatusText());
+	}
+
+	private static void setLastReason(GeAutoTraderPlugin plugin, GeReasonCode reason) throws Exception
+	{
+		Field reasonField = GeAutoTraderPlugin.class.getDeclaredField("lastReason");
+		reasonField.setAccessible(true);
+		reasonField.set(plugin, reason);
 	}
 
 	private static GeAutoTraderConfig enabledConfig()
