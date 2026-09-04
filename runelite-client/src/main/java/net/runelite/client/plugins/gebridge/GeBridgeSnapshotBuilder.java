@@ -34,21 +34,13 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeSearchState searchState)
 	{
 		return build(
-			gameState,
-			offers,
-			inventory,
-			generatedAtEpochMs,
-			tick,
-			"",
-			0L,
-			clientState,
-			playerState,
-			interfaceState,
-			geState,
-			safetyState,
-			inputState,
-			searchState,
-			GeBridgeMouseState.unavailable());
+			gameState, offers, inventory, generatedAtEpochMs, tick,
+			"", 0L, clientState, playerState, interfaceState, geState,
+			safetyState, inputState, searchState,
+			GeBridgeMouseState.unavailable(),
+			GeBridgeGeInputState.none(tick),
+			GeBridgeGeActionState.unavailable(tick),
+			GeBridgeGeInventoryState.closed(tick));
 	}
 
 	static GeBridgeSnapshot build(
@@ -68,21 +60,13 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeSearchState searchState)
 	{
 		return build(
-			gameState,
-			offers,
-			inventory,
-			generatedAtEpochMs,
-			tick,
-			bridgeInstanceId,
-			snapshotSeq,
-			clientState,
-			playerState,
-			interfaceState,
-			geState,
-			safetyState,
-			inputState,
-			searchState,
-			GeBridgeMouseState.unavailable());
+			gameState, offers, inventory, generatedAtEpochMs, tick,
+			bridgeInstanceId, snapshotSeq, clientState, playerState, interfaceState, geState,
+			safetyState, inputState, searchState,
+			GeBridgeMouseState.unavailable(),
+			GeBridgeGeInputState.none(tick),
+			GeBridgeGeActionState.unavailable(tick),
+			GeBridgeGeInventoryState.closed(tick));
 	}
 
 	static GeBridgeSnapshot build(
@@ -101,6 +85,35 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeInputState inputState,
 		GeBridgeSearchState searchState,
 		GeBridgeMouseState mouseState)
+	{
+		return build(
+			gameState, offers, inventory, generatedAtEpochMs, tick,
+			bridgeInstanceId, snapshotSeq, clientState, playerState, interfaceState, geState,
+			safetyState, inputState, searchState, mouseState,
+			GeBridgeGeInputState.none(tick),
+			GeBridgeGeActionState.unavailable(tick),
+			GeBridgeGeInventoryState.closed(tick));
+	}
+
+	static GeBridgeSnapshot build(
+		GameState gameState,
+		GrandExchangeOffer[] offers,
+		Item[] inventory,
+		long generatedAtEpochMs,
+		long tick,
+		String bridgeInstanceId,
+		long snapshotSeq,
+		GeBridgeClientState clientState,
+		GeBridgePlayerState playerState,
+		GeBridgeInterfaceState interfaceState,
+		GeBridgeGeState geState,
+		GeBridgeSafetyState safetyState,
+		GeBridgeInputState inputState,
+		GeBridgeSearchState searchState,
+		GeBridgeMouseState mouseState,
+		GeBridgeGeInputState geInputState,
+		GeBridgeGeActionState geActionState,
+		GeBridgeGeInventoryState geInventoryState)
 	{
 		List<GeBridgeSlot> slots = new ArrayList<>();
 		if (offers != null)
@@ -136,8 +149,7 @@ final class GeBridgeSnapshotBuilder
 		GeBridgeInventoryState inventoryState = new GeBridgeInventoryState(
 			INVENTORY_CAPACITY,
 			boundedOccupiedSlots,
-			Math.max(0, INVENTORY_CAPACITY - boundedOccupiedSlots)
-		);
+			Math.max(0, INVENTORY_CAPACITY - boundedOccupiedSlots));
 
 		return new GeBridgeSnapshot(
 			PROTOCOL,
@@ -157,8 +169,10 @@ final class GeBridgeSnapshotBuilder
 			safetyState,
 			inputState,
 			searchState == null ? GeBridgeSearchState.closed() : searchState,
-			mouseState == null ? GeBridgeMouseState.unavailable() : mouseState
-		);
+			mouseState == null ? GeBridgeMouseState.unavailable() : mouseState,
+			geInputState == null ? GeBridgeGeInputState.none(tick) : geInputState,
+			geActionState == null ? GeBridgeGeActionState.unavailable(tick) : geActionState,
+			geInventoryState == null ? GeBridgeGeInventoryState.closed(tick) : geInventoryState);
 	}
 
 	private static GeBridgeSlot toSlot(int slot, GrandExchangeOffer offer)
@@ -183,8 +197,7 @@ final class GeBridgeSnapshotBuilder
 			offer.getTotalQuantity(),
 			offer.getQuantitySold(),
 			offer.getSpent(),
-			GeBridgeStateMapper.collectReady(state)
-		);
+			GeBridgeStateMapper.collectReady(state));
 	}
 
 	private static GeBridgeSlot emptySlot(int slot)
