@@ -31,9 +31,9 @@ public final class GeActionDispatcher
 		switch (action.getType())
 		{
 			case OPEN_BUY:
-				return execute(slotAction(state, action.getSlot(), true, "Buy"));
+				return execute(slotAction(state, action.getSlot(), true, "Create Buy offer", "Buy"));
 			case OPEN_SELL:
-				return execute(slotAction(state, action.getSlot(), true, "Sell"));
+				return execute(slotAction(state, action.getSlot(), true, "Create Sell offer", "Sell"));
 			case OPEN_OFFER:
 				return execute(slotAction(state, action.getSlot(), false, "View offer", "View"));
 			case TYPE_ITEM_SEARCH:
