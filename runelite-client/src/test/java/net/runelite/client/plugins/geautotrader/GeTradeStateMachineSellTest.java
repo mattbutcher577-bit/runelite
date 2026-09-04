@@ -88,7 +88,8 @@ public class GeTradeStateMachineSellTest
 		action = machine.onTick(GeTradeStateMachineCollectTest.state(
 			GeTradeStateMachineCollectTest.slot("EMPTY", -1, 0, 0, 0),
 			GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN, Collections.emptyMap(), 2_700_000L), now.plusSeconds(23));
-		assertEquals(GePlannedActionType.NONE, action.getType());
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(1));
+		assertEquals(GePlannedActionType.OPEN_BUY, action.getType());
+		assertEquals(2, action.getSlot());
 	}
 }
