@@ -28,6 +28,7 @@ import net.runelite.api.events.GrandExchangeSearched;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientIntChanged;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
@@ -200,6 +201,16 @@ public class GeBridgePlugin extends Plugin
 	public void onVarClientIntChanged(VarClientIntChanged event)
 	{
 		if (GeBridgeRefreshPolicy.shouldRefreshVarClient(event.getIndex()))
+		{
+			clientThread.invokeLater(this::refreshSnapshotIfReady);
+		}
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (GeBridgeRefreshPolicy.shouldRefreshVarbit(event.getVarbitId())
+			|| GeBridgeRefreshPolicy.shouldRefreshVarp(event.getVarpId()))
 		{
 			clientThread.invokeLater(this::refreshSnapshotIfReady);
 		}
