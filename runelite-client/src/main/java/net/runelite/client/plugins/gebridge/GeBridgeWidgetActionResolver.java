@@ -66,13 +66,25 @@ final class GeBridgeWidgetActionResolver
 			}
 		}
 
-		Widget[] children = widget.getChildren();
-		if (children != null)
+		collectChildren(widget.getChildren(), accepted, results, seenWidgets);
+		collectChildren(widget.getDynamicChildren(), accepted, results, seenWidgets);
+		collectChildren(widget.getStaticChildren(), accepted, results, seenWidgets);
+		collectChildren(widget.getNestedChildren(), accepted, results, seenWidgets);
+	}
+
+	private static void collectChildren(
+		Widget[] children,
+		Set<String> accepted,
+		List<GeBridgeBounds> results,
+		Set<Widget> seenWidgets)
+	{
+		if (children == null)
 		{
-			for (Widget child : children)
-			{
-				collect(child, accepted, results, seenWidgets);
-			}
+			return;
+		}
+		for (Widget child : children)
+		{
+			collect(child, accepted, results, seenWidgets);
 		}
 	}
 
