@@ -9,16 +9,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class GeBridgeHttpServerTest
 {
 	@Test
-	public void testStateEndpointReturnsJsonAndRejectsWrites() throws Exception
+	public void testStateEndpointReturnsProtocolV3JsonAndRejectsWrites() throws Exception
 	{
 		GeBridgeSnapshot snapshot = new GeBridgeSnapshot(
-			2,
+			3,
 			123L,
 			42L,
 			"LOGGED_IN",
@@ -38,7 +39,10 @@ public class GeBridgeHttpServerTest
 				new GeBridgeBounds(550, 200, 180, 250, true)
 			),
 			new GeBridgeInventoryState(28, 1, 27),
-			new GeBridgeSafetyState(true, false, true, true)
+			new GeBridgeSafetyState(true, false, true, true),
+			new GeBridgeInputState(
+				120L, 110L, 120L, 115L, 118L, 100L, 90L,
+				400, 250, true, 0, 1, -1, "SHIFT", 3L)
 		);
 		AtomicReference<GeBridgeSnapshot> ref = new AtomicReference<>(snapshot);
 		GeBridgeHttpServer server = new GeBridgeHttpServer(new Gson(), ref::get, 0);
@@ -55,10 +59,14 @@ public class GeBridgeHttpServerTest
 			{
 				body = reader.readLine();
 			}
-			assertTrue(body.contains("\"protocol\":2"));
+			assertTrue(body.contains("\"protocol\":3"));
 			assertTrue(body.contains("\"gameState\":\"LOGGED_IN\""));
 			assertTrue(body.contains("\"canvasWidth\":773"));
 			assertTrue(body.contains("\"safeForGeMouseActions\":true"));
+			assertTrue(body.contains("\"mouseX\":400"));
+			assertTrue(body.contains("\"lastControlKey\":\"SHIFT\""));
+			assertFalse(body.contains("typedText"));
+			assertFalse(body.contains("keyChar"));
 
 			HttpURLConnection post = (HttpURLConnection) url.openConnection();
 			post.setRequestMethod("POST");
