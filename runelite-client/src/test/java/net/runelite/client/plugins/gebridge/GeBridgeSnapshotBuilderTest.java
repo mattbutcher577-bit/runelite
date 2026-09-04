@@ -42,7 +42,7 @@ public class GeBridgeSnapshotBuilderTest
 	}
 
 	@Test
-	public void testSnapshotContainsProtocolV2ExactOfferAndClientState()
+	public void testSnapshotContainsProtocolV3ExactOfferClientAndInputState()
 	{
 		GrandExchangeOffer offer = mock(GrandExchangeOffer.class);
 		when(offer.getItemId()).thenReturn(314);
@@ -85,6 +85,23 @@ public class GeBridgeSnapshotBuilderTest
 			new GeBridgeBounds(550, 200, 180, 250, true)
 		);
 		GeBridgeSafetyState safetyState = new GeBridgeSafetyState(true, false, true, true);
+		GeBridgeInputState inputState = new GeBridgeInputState(
+			123456700L,
+			123456600L,
+			123456700L,
+			123456650L,
+			123456680L,
+			123456500L,
+			123456400L,
+			400,
+			250,
+			true,
+			0,
+			1,
+			-1,
+			"SHIFT",
+			89L
+		);
 
 		GeBridgeSnapshot snapshot = GeBridgeSnapshotBuilder.build(
 			GameState.LOGGED_IN,
@@ -96,10 +113,11 @@ public class GeBridgeSnapshotBuilderTest
 			playerState,
 			interfaceState,
 			geState,
-			safetyState
+			safetyState,
+			inputState
 		);
 
-		assertEquals(2, snapshot.getProtocol());
+		assertEquals(3, snapshot.getProtocol());
 		assertEquals(123456789L, snapshot.getGeneratedAtEpochMs());
 		assertEquals(42L, snapshot.getTick());
 		assertEquals("LOGGED_IN", snapshot.getGameState());
@@ -110,6 +128,9 @@ public class GeBridgeSnapshotBuilderTest
 		assertTrue(snapshot.getInterfaces().isGrandExchangeOpen());
 		assertTrue(snapshot.getGe().getWindowBounds().isValid());
 		assertTrue(snapshot.getSafety().isSafeForGeMouseActions());
+		assertEquals(400, snapshot.getInput().getMouseX());
+		assertEquals(250, snapshot.getInput().getMouseY());
+		assertEquals("SHIFT", snapshot.getInput().getLastControlKey());
 
 		List<GeBridgeSlot> slots = snapshot.getSlots();
 		assertEquals(1, slots.size());
@@ -169,7 +190,8 @@ public class GeBridgeSnapshotBuilderTest
 			new GeBridgeGeState(
 				true, false, -1, new GeBridgeBounds(20, 20, 500, 360, true),
 				GeBridgeBounds.invalid(), new GeBridgeBounds(550, 200, 180, 250, true)),
-			new GeBridgeSafetyState(true, false, true, true)
+			new GeBridgeSafetyState(true, false, true, true),
+			new GeBridgeInputState(0L, 0L, 0L, 0L, 0L, 0L, 0L, -1, -1, false, 0, 0, 0, "", -1L)
 		);
 	}
 }
