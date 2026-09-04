@@ -2,12 +2,14 @@ package net.runelite.client.plugins.gebridge;
 
 import com.google.gson.Gson;
 import java.awt.Canvas;
+import java.awt.Dimension;
 import java.awt.IllegalComponentStateException;
 import java.awt.Point;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
@@ -25,7 +27,6 @@ import net.runelite.api.events.GrandExchangeOfferChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
-import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
@@ -71,12 +72,16 @@ public class GeBridgePlugin extends Plugin
 	private GeBridgeInputTracker inputTracker;
 	private boolean loggedInTickSeen;
 	private long bridgeTick;
+	private long snapshotSeq;
+	private String bridgeInstanceId = "";
 
 	@Override
 	protected void startUp() throws Exception
 	{
 		loggedInTickSeen = false;
 		bridgeTick = 0L;
+		snapshotSeq = 0L;
+		bridgeInstanceId = UUID.randomUUID().toString();
 		lastInputRefreshNanos.set(0L);
 		inputTracker = new GeBridgeInputTracker(this::requestInputRefresh);
 		mouseManager.registerMouseListener(inputTracker);
@@ -200,6 +205,8 @@ public class GeBridgePlugin extends Plugin
 			inventory,
 			nowEpochMs,
 			bridgeTick,
+			bridgeInstanceId,
+			nextSnapshotSeq(),
 			clientState,
 			playerState,
 			interfaceState,
@@ -224,6 +231,13 @@ public class GeBridgePlugin extends Plugin
 		int canvasScreenX = canvasScreenPositionValid ? canvasScreenPoint.x : -1;
 		int canvasScreenY = canvasScreenPositionValid ? canvasScreenPoint.y : -1;
 
+		Dimension realDimensions = client.getRealDimensions();
+		Dimension stretchedDimensions = client.getStretchedDimensions();
+		int realWidth = dimensionWidth(realDimensions);
+		int realHeight = dimensionHeight(realDimensions);
+		int stretchedWidth = dimensionWidth(stretchedDimensions);
+		int stretchedHeight = dimensionHeight(stretchedDimensions);
+
 		return new GeBridgeClientState(
 			gameState == GameState.LOGGED_IN && loggedInTickSeen,
 			client.getWorld(),
@@ -234,6 +248,11 @@ public class GeBridgePlugin extends Plugin
 			canvasScreenX,
 			canvasScreenY,
 			canvasScreenPositionValid,
+			realWidth,
+			realHeight,
+			stretchedWidth,
+			stretchedHeight,
+			client.isStretchedEnabled(),
 			client.getViewportWidth(),
 			client.getViewportHeight(),
 			client.getViewportXOffset(),
@@ -241,6 +260,16 @@ public class GeBridgePlugin extends Plugin
 			client.getTopLevelInterfaceId(),
 			client.getFPS()
 		);
+	}
+
+	private static int dimensionWidth(Dimension dimension)
+	{
+		return dimension == null || dimension.width <= 0 ? -1 : dimension.width;
+	}
+
+	private static int dimensionHeight(Dimension dimension)
+	{
+		return dimension == null || dimension.height <= 0 ? -1 : dimension.height;
 	}
 
 	private Point canvasScreenPoint()
@@ -365,8 +394,7 @@ public class GeBridgePlugin extends Plugin
 			return GeBridgeSearchState.closed();
 		}
 
-		String query = client.getVarcStrValue(VarClientID.MESLAYERINPUT);
-		return new GeBridgeSearchState(true, query == null ? "" : query, results);
+		return new GeBridgeSearchState(true, bridgeTick, results);
 	}
 
 	private GeBridgeSafetyState readSafetyState(
@@ -424,6 +452,11 @@ public class GeBridgePlugin extends Plugin
 		inputTracker = null;
 	}
 
+	private long nextSnapshotSeq()
+	{
+		return ++snapshotSeq;
+	}
+
 	private void publishUnavailableSnapshot(GameState gameState)
 	{
 		GeBridgeClientState clientState = readClientState(gameState);
@@ -440,6 +473,8 @@ public class GeBridgePlugin extends Plugin
 			new Item[0],
 			0L,
 			bridgeTick,
+			bridgeInstanceId,
+			nextSnapshotSeq(),
 			clientState,
 			GeBridgePlayerState.unavailable(),
 			interfaceState,
