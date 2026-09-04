@@ -17,6 +17,16 @@ public class GePromptInputServiceTest
 	}
 
 	@Test
+	public void testUnknownItemSearchPromptEmitsNoInput()
+	{
+		Capture capture = new Capture();
+		GePromptInputService service = new GePromptInputService(capture, () -> false);
+		assertEquals(GeReasonCode.EXECUTION_REJECTED,
+			service.typeItemSearch("Tomato", state(GePromptMode.UNKNOWN)));
+		assertEquals("", capture.text.toString());
+	}
+
+	@Test
 	public void testQuantityTypesDigitsAndOneEnter()
 	{
 		Capture capture = new Capture();
@@ -24,6 +34,16 @@ public class GePromptInputServiceTest
 		assertEquals(GeReasonCode.OK,
 			service.typeQuantity(125, state(GePromptMode.QUANTITY)));
 		assertEquals("125\n", capture.text.toString());
+	}
+
+	@Test
+	public void testPriceTypesDigitsAndOneEnter()
+	{
+		Capture capture = new Capture();
+		GePromptInputService service = new GePromptInputService(capture, () -> false);
+		assertEquals(GeReasonCode.OK,
+			service.typePrice(9000, state(GePromptMode.PRICE)));
+		assertEquals("9000\n", capture.text.toString());
 	}
 
 	@Test
