@@ -1,10 +1,13 @@
 package net.runelite.client.plugins.geautotrader;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class GeTradeStateMachineSetupSerializationTest
 {
@@ -30,6 +33,37 @@ public class GeTradeStateMachineSetupSerializationTest
 		assertEquals(GePlannedActionType.NONE, second.getType());
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(2));
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(3));
+	}
+
+	@Test
+	public void testAbortAndCollectPhasesOwnSharedGeWorkflow() throws Exception
+	{
+		GeTradePhase[] shared = {
+			GeTradePhase.WAIT_ABORT_READY,
+			GeTradePhase.WAIT_ABORT_RESULT,
+			GeTradePhase.WAIT_BUY_COLLECT_READY,
+			GeTradePhase.WAIT_BUY_COLLECT_RESULT,
+			GeTradePhase.WAIT_SELL_COLLECT_READY,
+			GeTradePhase.WAIT_SELL_COLLECT_RESULT
+		};
+		for (GeTradePhase phase : shared)
+		{
+			assertTrue(phase + " must own the shared GE workflow", isSharedPhase(phase));
+		}
+	}
+
+	@Test
+	public void testPureMonitoringDoesNotOwnSharedGeWorkflow() throws Exception
+	{
+		assertFalse(isSharedPhase(GeTradePhase.MONITOR_BUY));
+		assertFalse(isSharedPhase(GeTradePhase.MONITOR_SELL));
+	}
+
+	private static boolean isSharedPhase(GeTradePhase phase) throws Exception
+	{
+		Method method = GeTradeStateMachine.class.getDeclaredMethod("isSetupWorkflowPhase", GeTradePhase.class);
+		method.setAccessible(true);
+		return (Boolean) method.invoke(null, phase);
 	}
 
 	private static GeObservedState state(GePromptMode prompt, GeTradeSide side)
