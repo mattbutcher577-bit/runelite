@@ -10,7 +10,7 @@ class V981RuneLiteStateAdapter:
 
     This module deliberately does not click, type, place offers, abort offers,
     collect offers, or change the existing F8 emergency stop. It only exposes
-    validated protocol-v2 RuneLite bridge state to Python.
+    validated protocol-v3 RuneLite bridge state to Python.
     """
 
     def __init__(self, client: Optional[RuneLiteBridgeClient] = None) -> None:
@@ -104,3 +104,22 @@ class V981RuneLiteStateAdapter:
             self._snapshot.player.world_y,
             self._snapshot.player.plane,
         )
+
+    def input_idle_ms(self) -> Optional[int]:
+        return self.client.input_idle_ms(self._snapshot)
+
+    def recent_input(self, window_ms: int) -> bool:
+        return self.client.recent_input(self._snapshot, window_ms)
+
+    def mouse_position(self) -> Optional[Tuple[int, int]]:
+        return self.client.mouse_position(self._snapshot)
+
+    def mouse_buttons_down_mask(self) -> Optional[int]:
+        if self._snapshot is None:
+            return None
+        return self._snapshot.input.mouse_buttons_down_mask
+
+    def last_control_key(self) -> Optional[str]:
+        if self._snapshot is None:
+            return None
+        return self._snapshot.input.last_control_key or None
