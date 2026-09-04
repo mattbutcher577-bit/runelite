@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.gebridge;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import net.runelite.api.GameState;
@@ -40,7 +42,7 @@ public class GeBridgeSnapshotBuilderTest
 	}
 
 	@Test
-	public void testSnapshotContainsExactOfferAndAggregatedInventory()
+	public void testSnapshotContainsProtocolV2ExactOfferAndClientState()
 	{
 		GrandExchangeOffer offer = mock(GrandExchangeOffer.class);
 		when(offer.getItemId()).thenReturn(314);
@@ -57,17 +59,57 @@ public class GeBridgeSnapshotBuilderTest
 			new Item(-1, 0)
 		};
 
+		GeBridgeClientState clientState = new GeBridgeClientState(
+			true,
+			301,
+			Collections.singletonList("PVP"),
+			false,
+			773,
+			535,
+			765,
+			503,
+			4,
+			4,
+			548,
+			50
+		);
+		GeBridgePlayerState playerState = new GeBridgePlayerState(true, 3164, 3487, 0);
+		GeBridgeInterfaceState interfaceState = new GeBridgeInterfaceState(
+			true, false, false, false, false, false, false);
+		GeBridgeGeState geState = new GeBridgeGeState(
+			true,
+			false,
+			-1,
+			new GeBridgeBounds(20, 20, 500, 360, true),
+			GeBridgeBounds.invalid(),
+			new GeBridgeBounds(550, 200, 180, 250, true)
+		);
+		GeBridgeSafetyState safetyState = new GeBridgeSafetyState(true, false, true, true);
+
 		GeBridgeSnapshot snapshot = GeBridgeSnapshotBuilder.build(
 			GameState.LOGGED_IN,
 			new GrandExchangeOffer[]{offer},
 			inventory,
-			123456789L
+			123456789L,
+			42L,
+			clientState,
+			playerState,
+			interfaceState,
+			geState,
+			safetyState
 		);
 
-		assertEquals(1, snapshot.getProtocol());
+		assertEquals(2, snapshot.getProtocol());
 		assertEquals(123456789L, snapshot.getGeneratedAtEpochMs());
+		assertEquals(42L, snapshot.getTick());
 		assertEquals("LOGGED_IN", snapshot.getGameState());
 		assertEquals(53000, snapshot.getInventoryGp());
+		assertEquals(773, snapshot.getClient().getCanvasWidth());
+		assertEquals(535, snapshot.getClient().getCanvasHeight());
+		assertEquals(3164, snapshot.getPlayer().getWorldX());
+		assertTrue(snapshot.getInterfaces().isGrandExchangeOpen());
+		assertTrue(snapshot.getGe().getWindowBounds().isValid());
+		assertTrue(snapshot.getSafety().isSafeForGeMouseActions());
 
 		List<GeBridgeSlot> slots = snapshot.getSlots();
 		assertEquals(1, slots.size());
@@ -85,22 +127,49 @@ public class GeBridgeSnapshotBuilderTest
 		Map<Integer, Integer> inventoryMap = snapshot.inventoryAsMap();
 		assertEquals(Integer.valueOf(53000), inventoryMap.get(995));
 		assertEquals(Integer.valueOf(100), inventoryMap.get(314));
+		assertEquals(3, snapshot.getInventoryState().getOccupiedSlots());
+		assertEquals(25, snapshot.getInventoryState().getFreeSlots());
+	}
+
+	@Test
+	public void testInventorySlotCountCapsAtCapacity()
+	{
+		Item[] inventory = new Item[30];
+		Arrays.fill(inventory, new Item(995, 1));
+
+		GeBridgeSnapshot snapshot = buildSimpleSnapshot(new GrandExchangeOffer[0], inventory);
+		assertEquals(28, snapshot.getInventoryState().getOccupiedSlots());
+		assertEquals(0, snapshot.getInventoryState().getFreeSlots());
 	}
 
 	@Test
 	public void testNullOfferBecomesEmptySlot()
 	{
-		GeBridgeSnapshot snapshot = GeBridgeSnapshotBuilder.build(
-			GameState.LOGGED_IN,
-			new GrandExchangeOffer[]{null},
-			new Item[0],
-			1L
-		);
+		GeBridgeSnapshot snapshot = buildSimpleSnapshot(new GrandExchangeOffer[]{null}, new Item[0]);
 
 		GeBridgeSlot slot = snapshot.getSlots().get(0);
 		assertEquals(-1, slot.getItemId());
 		assertEquals("EMPTY", slot.getState());
 		assertEquals("EMPTY", slot.getVisual());
 		assertFalse(slot.isCollectReady());
+	}
+
+	private static GeBridgeSnapshot buildSimpleSnapshot(GrandExchangeOffer[] offers, Item[] inventory)
+	{
+		return GeBridgeSnapshotBuilder.build(
+			GameState.LOGGED_IN,
+			offers,
+			inventory,
+			1L,
+			1L,
+			new GeBridgeClientState(
+				true, 301, Collections.emptyList(), false, 773, 535, 765, 503, 4, 4, 548, 50),
+			new GeBridgePlayerState(true, 3164, 3487, 0),
+			new GeBridgeInterfaceState(true, false, false, false, false, false, false),
+			new GeBridgeGeState(
+				true, false, -1, new GeBridgeBounds(20, 20, 500, 360, true),
+				GeBridgeBounds.invalid(), new GeBridgeBounds(550, 200, 180, 250, true)),
+			new GeBridgeSafetyState(true, false, true, true)
+		);
 	}
 }
