@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -25,13 +26,15 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 @Slf4j
 @PluginDescriptor(
 	name = "GE State Bridge",
-	description = "Publishes read-only Grand Exchange, inventory, interface, and client state to localhost",
+	description = "Publishes read-only Grand Exchange, inventory, interface, client, and input state to localhost",
 	tags = {"grandexchange", "ge", "bridge", "developer"},
 	enabledByDefault = true,
 	loadInSafeMode = false
@@ -39,6 +42,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 public class GeBridgePlugin extends Plugin
 {
 	static final int PORT = 17654;
+	private static final long INPUT_REFRESH_THROTTLE_NANOS = 75_000_000L;
 
 	@Inject
 	private Client client;
@@ -49,8 +53,16 @@ public class GeBridgePlugin extends Plugin
 	@Inject
 	private Gson gson;
 
+	@Inject
+	private MouseManager mouseManager;
+
+	@Inject
+	private KeyManager keyManager;
+
 	private final AtomicReference<GeBridgeSnapshot> snapshot = new AtomicReference<>();
+	private final AtomicLong lastInputRefreshNanos = new AtomicLong();
 	private GeBridgeHttpServer httpServer;
+	private GeBridgeInputTracker inputTracker;
 	private boolean loggedInTickSeen;
 	private long bridgeTick;
 
@@ -59,6 +71,12 @@ public class GeBridgePlugin extends Plugin
 	{
 		loggedInTickSeen = false;
 		bridgeTick = 0L;
+		lastInputRefreshNanos.set(0L);
+		inputTracker = new GeBridgeInputTracker(this::requestInputRefresh);
+		mouseManager.registerMouseListener(inputTracker);
+		mouseManager.registerMouseWheelListener(inputTracker);
+		keyManager.registerKeyListener(inputTracker);
+
 		publishUnavailableSnapshot(client.getGameState());
 		httpServer = new GeBridgeHttpServer(gson, snapshot::get, PORT);
 		try
@@ -68,6 +86,7 @@ public class GeBridgePlugin extends Plugin
 		}
 		catch (IOException ex)
 		{
+			unregisterInputTracker();
 			log.error("Unable to bind GE state bridge on 127.0.0.1:{}", PORT, ex);
 			throw ex;
 		}
@@ -78,6 +97,7 @@ public class GeBridgePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		unregisterInputTracker();
 		if (httpServer != null)
 		{
 			httpServer.stop();
@@ -85,6 +105,7 @@ public class GeBridgePlugin extends Plugin
 		}
 		loggedInTickSeen = false;
 		bridgeTick = 0L;
+		lastInputRefreshNanos.set(0L);
 		publishUnavailableSnapshot(GameState.UNKNOWN);
 		log.info("GE state bridge stopped");
 	}
@@ -134,6 +155,20 @@ public class GeBridgePlugin extends Plugin
 		}
 	}
 
+	private void requestInputRefresh()
+	{
+		long now = System.nanoTime();
+		long previous = lastInputRefreshNanos.get();
+		if (now - previous < INPUT_REFRESH_THROTTLE_NANOS)
+		{
+			return;
+		}
+		if (lastInputRefreshNanos.compareAndSet(previous, now))
+		{
+			clientThread.invokeLater(this::refreshSnapshotIfReady);
+		}
+	}
+
 	private void refreshSnapshotIfReady()
 	{
 		GameState gameState = client.getGameState();
@@ -145,24 +180,27 @@ public class GeBridgePlugin extends Plugin
 
 		ItemContainer inventoryContainer = client.getItemContainer(InventoryID.INV);
 		Item[] inventory = inventoryContainer == null ? new Item[0] : inventoryContainer.getItems();
+		long nowEpochMs = System.currentTimeMillis();
 
 		GeBridgeClientState clientState = readClientState(gameState);
 		GeBridgePlayerState playerState = readPlayerState();
 		GeBridgeInterfaceState interfaceState = readInterfaceState();
 		GeBridgeGeState geState = readGeState(interfaceState);
 		GeBridgeSafetyState safetyState = readSafetyState(playerState, interfaceState);
+		GeBridgeInputState inputState = currentInputState(nowEpochMs);
 
 		snapshot.set(GeBridgeSnapshotBuilder.build(
 			gameState,
 			client.getGrandExchangeOffers(),
 			inventory,
-			System.currentTimeMillis(),
+			nowEpochMs,
 			bridgeTick,
 			clientState,
 			playerState,
 			interfaceState,
 			geState,
-			safetyState
+			safetyState,
+			inputState
 		));
 	}
 
@@ -295,6 +333,34 @@ public class GeBridgePlugin extends Plugin
 		return GeBridgeBounds.from(widget.getBounds());
 	}
 
+	private GeBridgeInputState currentInputState(long nowEpochMs)
+	{
+		if (inputTracker == null)
+		{
+			return emptyInputState();
+		}
+		return inputTracker.snapshot(nowEpochMs);
+	}
+
+	private static GeBridgeInputState emptyInputState()
+	{
+		return new GeBridgeInputState(
+			0L, 0L, 0L, 0L, 0L, 0L, 0L,
+			-1, -1, false, 0, 0, 0, "", -1L);
+	}
+
+	private void unregisterInputTracker()
+	{
+		if (inputTracker == null)
+		{
+			return;
+		}
+		mouseManager.unregisterMouseListener(inputTracker);
+		mouseManager.unregisterMouseWheelListener(inputTracker);
+		keyManager.unregisterKeyListener(inputTracker);
+		inputTracker = null;
+	}
+
 	private void publishUnavailableSnapshot(GameState gameState)
 	{
 		GeBridgeClientState clientState = new GeBridgeClientState(
@@ -333,7 +399,8 @@ public class GeBridgePlugin extends Plugin
 			GeBridgePlayerState.unavailable(),
 			interfaceState,
 			geState,
-			safetyState
+			safetyState,
+			currentInputState(System.currentTimeMillis())
 		));
 	}
 }
