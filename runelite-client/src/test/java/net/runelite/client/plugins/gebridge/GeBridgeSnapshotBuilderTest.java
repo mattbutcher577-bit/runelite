@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.gebridge;
 
+import com.google.gson.Gson;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +31,7 @@ public class GeBridgeSnapshotBuilderTest
 	}
 
 	@Test
-	public void testSnapshotContainsProtocolV4ExactStateAndSearchResults()
+	public void testSnapshotContainsProtocolV5ExactStateAndSearchResultsWithoutQueryLeak()
 	{
 		GrandExchangeOffer offer = mock(GrandExchangeOffer.class);
 		when(offer.getItemId()).thenReturn(314);
@@ -83,7 +84,7 @@ public class GeBridgeSnapshotBuilderTest
 			searchState
 		);
 
-		assertEquals(4, snapshot.getProtocol());
+		assertEquals(5, snapshot.getProtocol());
 		assertEquals(53000, snapshot.getInventoryGp());
 		assertEquals(42L, snapshot.getTick());
 		assertEquals("LOGGED_IN", snapshot.getGameState());
@@ -91,11 +92,14 @@ public class GeBridgeSnapshotBuilderTest
 		assertEquals(232, snapshot.getClient().getCanvasScreenY());
 		assertTrue(snapshot.getClient().isCanvasScreenPositionValid());
 		assertTrue(snapshot.getSearch().isOpen());
-		assertEquals("Feather", snapshot.getSearch().getQuery());
 		assertEquals(1, snapshot.getSearch().getResults().size());
 		assertEquals(314, snapshot.getSearch().getResults().get(0).getItemId());
 		assertEquals("Feather", snapshot.getSearch().getResults().get(0).getName());
 		assertTrue(snapshot.getSearch().getResults().get(0).getNameBounds().isValid());
+
+		String json = new Gson().toJson(snapshot);
+		assertFalse("protocol 5 must not publish raw GE search text", json.contains("\"query\""));
+		assertFalse("protocol 5 must not publish the typed search value", json.contains("\"Feather\"") && json.contains("\"query\""));
 
 		List<GeBridgeSlot> slots = snapshot.getSlots();
 		assertEquals(1, slots.size());
