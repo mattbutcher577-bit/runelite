@@ -4,6 +4,7 @@ import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
@@ -101,5 +102,19 @@ public class GeBridgeInputTrackerTest
 		KeyEvent f8 = new KeyEvent(canvas, KeyEvent.KEY_PRESSED, 4000L, 0, KeyEvent.VK_F8, KeyEvent.CHAR_UNDEFINED);
 		tracker.keyPressed(f8);
 		assertEquals("F8", tracker.snapshot(4010L).getLastControlKey());
+	}
+
+	@Test
+	public void testObservedInputRequestsSnapshotRefresh()
+	{
+		AtomicInteger refreshes = new AtomicInteger();
+		GeBridgeInputTracker tracker = new GeBridgeInputTracker(refreshes::incrementAndGet);
+
+		tracker.mouseMoved(new MouseEvent(
+			canvas, MouseEvent.MOUSE_MOVED, 5000L, 0, 10, 20, 0, false, MouseEvent.NOBUTTON));
+		tracker.keyPressed(new KeyEvent(
+			canvas, KeyEvent.KEY_PRESSED, 5100L, 0, KeyEvent.VK_SHIFT, KeyEvent.CHAR_UNDEFINED));
+
+		assertEquals(2, refreshes.get());
 	}
 }
