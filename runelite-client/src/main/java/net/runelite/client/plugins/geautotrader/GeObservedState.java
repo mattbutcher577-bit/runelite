@@ -56,7 +56,7 @@ public final class GeObservedState
 			setupSide,
 			GePromptMode.UNKNOWN,
 			Collections.emptySet(),
-			false);
+			true);
 	}
 
 	public GeObservedState(
@@ -77,7 +77,7 @@ public final class GeObservedState
 	{
 		this(loggedIn, membersWorld, loginSettled, geOpen, blockerActive, world, gp, slots,
 			inventoryCounts, setupItemId, setupQuantity, setupPrice, setupSide, promptMode,
-			Collections.emptySet(), false);
+			Collections.emptySet(), true);
 	}
 
 	public GeObservedState(
@@ -99,7 +99,7 @@ public final class GeObservedState
 	{
 		this(loggedIn, membersWorld, loginSettled, geOpen, blockerActive, world, gp, slots,
 			inventoryCounts, setupItemId, setupQuantity, setupPrice, setupSide, promptMode,
-			searchResultItemIds, false);
+			searchResultItemIds, true);
 	}
 
 	public GeObservedState(
