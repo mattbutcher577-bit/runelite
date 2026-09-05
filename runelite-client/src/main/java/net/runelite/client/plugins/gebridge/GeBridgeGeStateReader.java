@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.gebridge;
 
 import net.runelite.api.Client;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -15,6 +16,7 @@ final class GeBridgeGeStateReader
 	static GeBridgeGeState read(Client client, GeBridgeInterfaceState interfaceState)
 	{
 		boolean setupOpen = interfaceState != null && interfaceState.isGrandExchangeOfferSetupOpen();
+		boolean detailsVisible = isVisible(client.getWidget(InterfaceID.GeOffers.DETAILS));
 		int itemId = setupOpen ? client.getVarpValue(VarPlayerID.TRADINGPOST_SEARCH) : -1;
 		int quantity = setupOpen ? client.getVarbitValue(VarbitID.GE_NEWOFFER_QUANTITY) : 0;
 		int price = setupOpen ? client.getVarbitValue(VarbitID.GE_NEWOFFER_PRICE) : 0;
@@ -23,6 +25,7 @@ final class GeBridgeGeStateReader
 		return new GeBridgeGeState(
 			interfaceState != null && interfaceState.isGrandExchangeOpen(),
 			setupOpen,
+			detailsVisible,
 			itemId,
 			quantity,
 			price,
@@ -43,6 +46,11 @@ final class GeBridgeGeStateReader
 			return "SELL";
 		}
 		return "UNKNOWN";
+	}
+
+	private static boolean isVisible(Widget widget)
+	{
+		return widget != null && !widget.isHidden();
 	}
 
 	private static GeBridgeBounds boundsOf(Widget widget)
