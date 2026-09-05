@@ -500,6 +500,7 @@ public class GeBridgePlugin extends Plugin
 			itemManager,
 			client.getGrandExchangeOffers(),
 			slotRoots,
+			client.getWidget(InterfaceID.GeOffers.DETAILS),
 			client.getWidget(InterfaceID.GeOffers.DETAILS_COLLECT),
 			client.getWidget(InterfaceID.GeOffers.DETAILS_MODIFY),
 			bridgeTick);
