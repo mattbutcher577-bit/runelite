@@ -15,6 +15,19 @@ import net.runelite.api.widgets.Widget;
 final class GeBridgeGeActionReader
 {
 	private static final int MAX_WIDGETS = 512;
+	private static final String[] COLLECT_ALIASES =
+	{
+		"Collect",
+		"Collect item",
+		"Collect items",
+		"Collect note",
+		"Collect notes",
+		"Collect-item",
+		"Collect-items",
+		"Collect-note",
+		"Collect-notes",
+		"Collect coins"
+	};
 	private static final int[] SLOT_COMPONENT_IDS =
 	{
 		InterfaceID.GeOffers.INDEX_0,
@@ -104,8 +117,7 @@ final class GeBridgeGeActionReader
 			tick,
 			GeBridgeBounds.from(window.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(window, "Back"),
-			findOfferStatusAction(
-				collectRoot, detailsRoot, window, "Collect", "Collect items", "Collect coins"),
+			findOfferStatusAction(collectRoot, detailsRoot, window, COLLECT_ALIASES),
 			setup == null || setup.isHidden() ? GeBridgeBounds.invalid() : GeBridgeBounds.from(setup.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Choose item", "Select item", "Search"),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Quantity", "Set quantity", "Enter quantity"),
