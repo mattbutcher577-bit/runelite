@@ -27,7 +27,26 @@ final class GeBridgeWidgetActionResolver
 		return matches.size() == 1 ? matches.get(0) : GeBridgeBounds.invalid();
 	}
 
+	static GeBridgeBounds findUniqueAction(Widget root, String... aliases)
+	{
+		List<GeBridgeBounds> matches = findAllActions(root, aliases);
+		return matches.size() == 1 ? matches.get(0) : GeBridgeBounds.invalid();
+	}
+
 	static List<GeBridgeBounds> findAll(Widget root, String... aliases)
+	{
+		return findAllInternal(root, false, aliases);
+	}
+
+	static List<GeBridgeBounds> findAllActions(Widget root, String... aliases)
+	{
+		return findAllInternal(root, true, aliases);
+	}
+
+	private static List<GeBridgeBounds> findAllInternal(
+		Widget root,
+		boolean actionsOnly,
+		String... aliases)
 	{
 		Set<String> accepted = new HashSet<>();
 		for (String alias : aliases)
@@ -61,7 +80,7 @@ final class GeBridgeWidgetActionResolver
 				continue;
 			}
 
-			if (matches(widget, accepted))
+			if (matches(widget, accepted, actionsOnly))
 			{
 				GeBridgeBounds bounds = GeBridgeBounds.from(widget.getBounds());
 				if (bounds.isValid() && !containsBounds(results, bounds))
@@ -99,7 +118,7 @@ final class GeBridgeWidgetActionResolver
 		}
 	}
 
-	private static boolean matches(Widget widget, Set<String> accepted)
+	private static boolean matches(Widget widget, Set<String> accepted, boolean actionsOnly)
 	{
 		String[] actions = widget.getActions();
 		if (actions != null)
@@ -112,8 +131,8 @@ final class GeBridgeWidgetActionResolver
 				}
 			}
 		}
-		return accepted.contains(normalize(widget.getText()))
-			|| accepted.contains(normalize(widget.getName()));
+		return !actionsOnly && (accepted.contains(normalize(widget.getText()))
+			|| accepted.contains(normalize(widget.getName())));
 	}
 
 	private static String normalize(String value)
