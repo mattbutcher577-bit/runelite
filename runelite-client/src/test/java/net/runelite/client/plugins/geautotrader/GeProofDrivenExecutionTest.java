@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class GeProofDrivenExecutionTest
 {
@@ -14,10 +16,7 @@ public class GeProofDrivenExecutionTest
 	public void testCompletedBuyReopensOfferUntilDetailsVisibleThenCollects()
 	{
 		Instant now = Instant.parse("2026-09-05T15:00:00Z");
-		GeTradeLedger trades = new GeTradeLedger();
-		trades.reserveBuy("v6-buy-proof", 1, 1207, "Steel dagger", 125, 5, 6);
-		trades.markPlaced("v6-buy-proof", now.minusSeconds(30));
-		trades.markFilled("v6-buy-proof", 125);
+		GeTradeLedger trades = completedBuyLedger(now);
 		GeTradeStateMachine machine = machine(trades, now);
 
 		assertEquals(GePlannedActionType.OPEN_OFFER,
@@ -32,11 +31,7 @@ public class GeProofDrivenExecutionTest
 	public void testOverviewReturningBeforeCollectionProofReopensOffer()
 	{
 		Instant now = Instant.parse("2026-09-05T15:00:00Z");
-		GeTradeLedger trades = new GeTradeLedger();
-		trades.reserveBuy("v6-buy-proof", 1, 1207, "Steel dagger", 125, 5, 6);
-		trades.markPlaced("v6-buy-proof", now.minusSeconds(30));
-		trades.markFilled("v6-buy-proof", 125);
-		GeTradeStateMachine machine = machine(trades, now);
+		GeTradeStateMachine machine = machine(completedBuyLedger(now), now);
 
 		machine.onTick(state("BOUGHT", false, 0, 2_003_062L), now);
 		machine.onTick(state("BOUGHT", true, 0, 2_003_062L), now.plusMillis(600));
@@ -48,11 +43,7 @@ public class GeProofDrivenExecutionTest
 	public void testBuyCollectionProofCreatesSellFromActualInventoryDelta()
 	{
 		Instant now = Instant.parse("2026-09-05T15:00:00Z");
-		GeTradeLedger trades = new GeTradeLedger();
-		trades.reserveBuy("v6-buy-proof", 1, 1207, "Steel dagger", 125, 5, 6);
-		trades.markPlaced("v6-buy-proof", now.minusSeconds(30));
-		trades.markFilled("v6-buy-proof", 125);
-		GeTradeStateMachine machine = machine(trades, now);
+		GeTradeStateMachine machine = machine(completedBuyLedger(now), now);
 
 		machine.onTick(state("BOUGHT", false, 0, 2_003_062L), now);
 		machine.onTick(state("BOUGHT", true, 0, 2_003_062L), now.plusMillis(600));
@@ -60,6 +51,50 @@ public class GeProofDrivenExecutionTest
 		assertEquals(GePlannedActionType.OPEN_SELL, sell.getType());
 		assertEquals(125, sell.getQuantity());
 		assertEquals(6, sell.getPrice());
+	}
+
+	@Test
+	public void testTargetUnavailableIsRetryableInsideFiveSecondWindow()
+	{
+		Instant now = Instant.parse("2026-09-05T15:00:00Z");
+		GeTradeStateMachine machine = machine(completedBuyLedger(now), now);
+		GePlannedAction open = machine.onTick(state("BOUGHT", false, 0, 2_003_062L), now);
+
+		assertFalse(machine.recordExecutionResult(
+			open, GeReasonCode.EXECUTION_TARGET_UNAVAILABLE, now.plusSeconds(1)));
+		assertEquals(GePlannedActionType.OPEN_OFFER, machine.getPendingAction(1));
+	}
+
+	@Test
+	public void testTargetUnavailableBecomesTerminalAfterFiveSecondWindow()
+	{
+		Instant now = Instant.parse("2026-09-05T15:00:00Z");
+		GeTradeStateMachine machine = machine(completedBuyLedger(now), now);
+		GePlannedAction open = machine.onTick(state("BOUGHT", false, 0, 2_003_062L), now);
+		machine.recordExecutionResult(open, GeReasonCode.EXECUTION_TARGET_UNAVAILABLE, now.plusSeconds(1));
+
+		assertTrue(machine.recordExecutionResult(
+			open, GeReasonCode.EXECUTION_TARGET_UNAVAILABLE, now.plusSeconds(6)));
+	}
+
+	@Test
+	public void testExecutionRejectedRemainsImmediateTerminalFailure()
+	{
+		Instant now = Instant.parse("2026-09-05T15:00:00Z");
+		GeTradeStateMachine machine = machine(completedBuyLedger(now), now);
+		GePlannedAction open = machine.onTick(state("BOUGHT", false, 0, 2_003_062L), now);
+
+		assertTrue(machine.recordExecutionResult(
+			open, GeReasonCode.EXECUTION_REJECTED, now.plusMillis(1)));
+	}
+
+	private static GeTradeLedger completedBuyLedger(Instant now)
+	{
+		GeTradeLedger trades = new GeTradeLedger();
+		trades.reserveBuy("v6-buy-proof", 1, 1207, "Steel dagger", 125, 5, 6);
+		trades.markPlaced("v6-buy-proof", now.minusSeconds(30));
+		trades.markFilled("v6-buy-proof", 125);
+		return trades;
 	}
 
 	private static GeTradeStateMachine machine(GeTradeLedger trades, Instant now)
