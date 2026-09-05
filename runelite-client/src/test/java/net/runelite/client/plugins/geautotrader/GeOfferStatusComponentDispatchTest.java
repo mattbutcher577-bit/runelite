@@ -43,6 +43,40 @@ public class GeOfferStatusComponentDispatchTest
 		verify(client).menuAction(7, 62002, MenuAction.CC_OP, 1, -1, "Abort offer", "Steel dagger");
 	}
 
+	@Test
+	public void testCollectFallsBackToDetailsContainerWhenSpecificComponentHasNoAction()
+	{
+		Client client = mock(Client.class);
+		Widget specific = visibleRoot();
+		Widget details = visibleRoot();
+		Widget collect = actionWidget("Collect", 8, 62003, "Steel dagger");
+		when(details.getChildren()).thenReturn(new Widget[]{collect});
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS_COLLECT)).thenReturn(specific);
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS)).thenReturn(details);
+
+		assertEquals(
+			GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.COLLECT), null));
+		verify(client).menuAction(8, 62003, MenuAction.CC_OP, 1, -1, "Collect", "Steel dagger");
+	}
+
+	@Test
+	public void testAbortFallsBackToDetailsContainerWhenSpecificComponentHasNoAction()
+	{
+		Client client = mock(Client.class);
+		Widget specific = visibleRoot();
+		Widget details = visibleRoot();
+		Widget abort = actionWidget("Abort offer", 9, 62004, "Steel dagger");
+		when(details.getChildren()).thenReturn(new Widget[]{abort});
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS_MODIFY)).thenReturn(specific);
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS)).thenReturn(details);
+
+		assertEquals(
+			GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.ABORT_BUY), null));
+		verify(client).menuAction(9, 62004, MenuAction.CC_OP, 1, -1, "Abort offer", "Steel dagger");
+	}
+
 	private static GeActionDispatcher dispatcher(Client client)
 	{
 		return new GeActionDispatcher(
