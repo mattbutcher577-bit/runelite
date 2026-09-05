@@ -14,7 +14,7 @@ final class GeBridgeGeActionReader
 
 	static GeBridgeGeActionState read(Widget window, Widget setup, long tick)
 	{
-		return read(window, setup, null, tick);
+		return read(window, setup, null, null, tick);
 	}
 
 	static GeBridgeGeActionState read(
@@ -23,33 +23,98 @@ final class GeBridgeGeActionReader
 		GrandExchangeOffer[] offers,
 		long tick)
 	{
+		return read(window, setup, offers, null, tick);
+	}
+
+	static GeBridgeGeActionState read(
+		Widget window,
+		Widget setup,
+		GrandExchangeOffer[] offers,
+		Widget[] slotRoots,
+		long tick)
+	{
 		if (window == null || window.isHidden())
 		{
 			return GeBridgeGeActionState.unavailable(tick);
 		}
 
-		List<GeBridgeBounds> buys = GeBridgeWidgetActionResolver.findAll(
-			window, "Create Buy offer");
-		List<GeBridgeBounds> sells = GeBridgeWidgetActionResolver.findAll(
-			window, "Create Sell offer");
-		List<GeBridgeBounds> opens = GeBridgeWidgetActionResolver.findAll(window, "View offer");
-		List<GeBridgeGeActionSlot> slots = offers == null
-			? legacyLayout(buys, sells, opens)
-			: offerAlignedLayout(offers, buys, sells, opens);
+		List<GeBridgeGeActionSlot> slots;
+		if (offers != null && slotRoots != null)
+		{
+			slots = exactSlotLayout(offers, slotRoots);
+		}
+		else
+		{
+			List<GeBridgeBounds> buys = GeBridgeWidgetActionResolver.findAllActions(
+				window, "Create Buy offer");
+			List<GeBridgeBounds> sells = GeBridgeWidgetActionResolver.findAllActions(
+				window, "Create Sell offer");
+			List<GeBridgeBounds> opens = GeBridgeWidgetActionResolver.findAllActions(
+				window, "View offer");
+			slots = offers == null
+				? legacyLayout(buys, sells, opens)
+				: offerAlignedLayout(offers, buys, sells, opens);
+		}
 
 		Widget setupRoot = setup != null && !setup.isHidden() ? setup : window;
 		return new GeBridgeGeActionState(
 			tick,
 			GeBridgeBounds.from(window.getBounds()),
-			GeBridgeWidgetActionResolver.findUnique(window, "Back"),
-			GeBridgeWidgetActionResolver.findUnique(window, "Collect", "Collect items", "Collect coins"),
+			GeBridgeWidgetActionResolver.findUniqueAction(window, "Back"),
+			GeBridgeWidgetActionResolver.findUniqueAction(window, "Collect", "Collect items", "Collect coins"),
 			setup == null || setup.isHidden() ? GeBridgeBounds.invalid() : GeBridgeBounds.from(setup.getBounds()),
-			GeBridgeWidgetActionResolver.findUnique(setupRoot, "Choose item", "Select item", "Search"),
-			GeBridgeWidgetActionResolver.findUnique(setupRoot, "Quantity", "Set quantity", "Enter quantity"),
-			GeBridgeWidgetActionResolver.findUnique(setupRoot, "Price", "Set price", "Enter price"),
-			GeBridgeWidgetActionResolver.findUnique(setupRoot, "Confirm"),
-			GeBridgeWidgetActionResolver.findUnique(window, "Abort offer", "Abort"),
+			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Choose item", "Select item", "Search"),
+			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Quantity", "Set quantity", "Enter quantity"),
+			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Price", "Set price", "Enter price"),
+			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Confirm"),
+			GeBridgeWidgetActionResolver.findUniqueAction(window, "Abort offer", "Abort"),
 			slots);
+	}
+
+	private static List<GeBridgeGeActionSlot> exactSlotLayout(
+		GrandExchangeOffer[] offers,
+		Widget[] slotRoots)
+	{
+		List<GeBridgeGeActionSlot> slots = new ArrayList<>();
+		for (int slot = 0; slot < offers.length; slot++)
+		{
+			GrandExchangeOffer offer = offers[slot];
+			GrandExchangeOfferState state = offer == null || offer.getState() == null
+				? GrandExchangeOfferState.EMPTY
+				: offer.getState();
+			Widget root = slot < slotRoots.length ? slotRoots[slot] : null;
+
+			GeBridgeBounds buy = GeBridgeBounds.invalid();
+			GeBridgeBounds sell = GeBridgeBounds.invalid();
+			GeBridgeBounds open = GeBridgeBounds.invalid();
+			GeBridgeBounds rootBounds = visibleBounds(root);
+
+			if (root != null && !root.isHidden())
+			{
+				if (state == GrandExchangeOfferState.EMPTY)
+				{
+					buy = GeBridgeWidgetActionResolver.findUniqueAction(root, "Create Buy offer");
+					sell = GeBridgeWidgetActionResolver.findUniqueAction(root, "Create Sell offer");
+				}
+				else
+				{
+					open = GeBridgeWidgetActionResolver.findUniqueAction(root, "View offer");
+				}
+			}
+
+			GeBridgeBounds slotBounds = rootBounds.isValid()
+				? rootBounds
+				: GeBridgeBounds.union(buy, sell, open);
+			slots.add(new GeBridgeGeActionSlot(slot, slotBounds, buy, sell, open));
+		}
+		return slots;
+	}
+
+	private static GeBridgeBounds visibleBounds(Widget widget)
+	{
+		return widget == null || widget.isHidden()
+			? GeBridgeBounds.invalid()
+			: GeBridgeBounds.from(widget.getBounds());
 	}
 
 	private static List<GeBridgeGeActionSlot> offerAlignedLayout(
