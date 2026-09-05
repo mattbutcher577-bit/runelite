@@ -33,7 +33,7 @@ final class GeBridgeGeActionReader
 
 	static GeBridgeGeActionState read(Widget window, Widget setup, long tick)
 	{
-		return read(window, setup, null, null, tick);
+		return read(window, setup, null, null, null, null, tick);
 	}
 
 	static GeBridgeGeActionState read(
@@ -42,7 +42,7 @@ final class GeBridgeGeActionReader
 		GrandExchangeOffer[] offers,
 		long tick)
 	{
-		return read(window, setup, offers, null, tick);
+		return read(window, setup, offers, null, null, null, tick);
 	}
 
 	static GeBridgeGeActionState read(
@@ -50,6 +50,18 @@ final class GeBridgeGeActionReader
 		Widget setup,
 		GrandExchangeOffer[] offers,
 		Widget[] slotRoots,
+		long tick)
+	{
+		return read(window, setup, offers, slotRoots, null, null, tick);
+	}
+
+	static GeBridgeGeActionState read(
+		Widget window,
+		Widget setup,
+		GrandExchangeOffer[] offers,
+		Widget[] slotRoots,
+		Widget collectRoot,
+		Widget modifyRoot,
 		long tick)
 	{
 		if (window == null || window.isHidden())
@@ -75,18 +87,26 @@ final class GeBridgeGeActionReader
 		}
 
 		Widget setupRoot = setup != null && !setup.isHidden() ? setup : window;
+		Widget collectSearchRoot = visibleOrFallback(collectRoot, window);
+		Widget modifySearchRoot = visibleOrFallback(modifyRoot, window);
 		return new GeBridgeGeActionState(
 			tick,
 			GeBridgeBounds.from(window.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(window, "Back"),
-			GeBridgeWidgetActionResolver.findUniqueAction(window, "Collect", "Collect items", "Collect coins"),
+			GeBridgeWidgetActionResolver.findUniqueAction(
+				collectSearchRoot, "Collect", "Collect items", "Collect coins"),
 			setup == null || setup.isHidden() ? GeBridgeBounds.invalid() : GeBridgeBounds.from(setup.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Choose item", "Select item", "Search"),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Quantity", "Set quantity", "Enter quantity"),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Price", "Set price", "Enter price"),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Confirm"),
-			GeBridgeWidgetActionResolver.findUniqueAction(window, "Abort offer", "Abort"),
+			GeBridgeWidgetActionResolver.findUniqueAction(modifySearchRoot, "Abort offer", "Abort"),
 			slots);
+	}
+
+	private static Widget visibleOrFallback(Widget preferred, Widget fallback)
+	{
+		return preferred != null && !preferred.isHidden() ? preferred : fallback;
 	}
 
 	private static Widget[] discoverSlotRoots(Widget window)
