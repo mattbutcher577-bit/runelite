@@ -61,6 +61,10 @@ public final class GeTradeStateMachine
 			return GePlannedAction.none();
 		}
 
+		// A healthy global state supersedes transient startup reasons such as LOGIN_RESYNC.
+		// Slot-specific checks below may replace this with a more specific reason.
+		lastReason = GeReasonCode.OK;
+
 		for (int slot = 1; slot <= 3; slot++)
 		{
 			SlotContext context = contexts.get(slot);
@@ -324,6 +328,7 @@ public final class GeTradeStateMachine
 				return GePlannedAction.none();
 			case WAIT_BUY_COLLECT_READY:
 				context.preCollectInventory = state.getInventoryQuantity(context.candidate.getItemId());
+				context.preCollectGp = state.getGp();
 				context.phase = GeTradePhase.WAIT_BUY_COLLECT_RESULT;
 				return action(context, GePlannedActionType.COLLECT);
 			case WAIT_BUY_COLLECT_RESULT:
@@ -429,6 +434,10 @@ public final class GeTradeStateMachine
 		GeTradeObligation owned = tradeLedger.findBySlot(context.slot);
 		if (!observed.isEmpty())
 		{
+			if (owned == null)
+			{
+				owned = adoptObservedOffer(context.slot, observed, now);
+			}
 			return resumeOwnedOffer(context, observed, owned, now);
 		}
 		if (owned != null)
@@ -476,6 +485,70 @@ public final class GeTradeStateMachine
 		context.side = GeTradeSide.BUY;
 		context.phase = GeTradePhase.WAIT_BUY_SETUP;
 		return action(context, GePlannedActionType.OPEN_BUY);
+	}
+
+	private GeTradeObligation adoptObservedOffer(int slot, GeObservedSlot observed, Instant now)
+	{
+		if (observed == null
+			|| observed.isEmpty()
+			|| observed.getItemId() < 0
+			|| observed.getTotalQuantity() <= 0
+			|| observed.getPrice() <= 0)
+		{
+			return null;
+		}
+
+		String offerState = observed.getState();
+		boolean buy = "BUYING".equalsIgnoreCase(offerState)
+			|| "BOUGHT".equalsIgnoreCase(offerState)
+			|| "CANCELLED_BUY".equalsIgnoreCase(offerState);
+		boolean sell = "SELLING".equalsIgnoreCase(offerState)
+			|| "SOLD".equalsIgnoreCase(offerState);
+		if (!buy && !sell)
+		{
+			return null;
+		}
+
+		GeMarketItem marketItem = currentMarketItem(observed.getItemId());
+		String itemName = marketItem == null || marketItem.getName().trim().isEmpty()
+			? "Item " + observed.getItemId()
+			: marketItem.getName();
+
+		GeTradeObligation obligation;
+		if (buy)
+		{
+			int sellPrice = marketItem == null ? 0 : marketItem.getSellPrice();
+			if (sellPrice <= 0)
+			{
+				lastReason = GeReasonCode.MARKET_DATA_UNAVAILABLE;
+				return null;
+			}
+			String id = "v6-orphan-buy-" + slot;
+			obligation = tradeLedger.reserveBuy(
+				id,
+				slot,
+				observed.getItemId(),
+				itemName,
+				observed.getTotalQuantity(),
+				observed.getPrice(),
+				sellPrice);
+		}
+		else
+		{
+			String id = "v6-orphan-sell-" + slot;
+			obligation = tradeLedger.createSell(
+				id,
+				null,
+				slot,
+				observed.getItemId(),
+				itemName,
+				observed.getTotalQuantity(),
+				observed.getPrice());
+		}
+
+		tradeLedger.markPlaced(obligation.getId(), now);
+		tradeLedger.markFilled(obligation.getId(), observed.getFilledQuantity());
+		return obligation;
 	}
 
 	private GePlannedAction resumeOwnedOffer(
@@ -589,21 +662,27 @@ public final class GeTradeStateMachine
 		return GePlannedAction.none();
 	}
 
-	private int currentSellPrice(int itemId)
+	private GeMarketItem currentMarketItem(int itemId)
 	{
 		GeMarketSnapshot market = marketSupplier == null ? null : marketSupplier.get();
 		if (market == null)
 		{
-			return 0;
+			return null;
 		}
 		for (GeMarketItem item : market.getItems())
 		{
 			if (item != null && item.getItemId() == itemId)
 			{
-				return item.getSellPrice();
+				return item;
 			}
 		}
-		return 0;
+		return null;
+	}
+
+	private int currentSellPrice(int itemId)
+	{
+		GeMarketItem item = currentMarketItem(itemId);
+		return item == null ? 0 : item.getSellPrice();
 	}
 
 	private void updateObligationSequence(String id)
@@ -659,12 +738,22 @@ public final class GeTradeStateMachine
 	{
 		int after = state.getInventoryQuantity(context.candidate.getItemId());
 		int actualReceived = Math.max(0, after - context.preCollectInventory);
-		if (!observed.isEmpty() || actualReceived <= 0)
+		if (!observed.isEmpty())
 		{
-			if (observed.isEmpty())
+			return GePlannedAction.none();
+		}
+
+		GeTradeObligation obligation = tradeLedger.get(context.obligationId);
+		int expectedFilled = obligation == null ? 0 : obligation.getFilledQuantity();
+		if (actualReceived <= 0)
+		{
+			if (expectedFilled == 0 && state.getGp() > context.preCollectGp)
 			{
-				lastReason = GeReasonCode.COLLECT_STATE_MISMATCH;
+				tradeLedger.remove(context.obligationId);
+				context.reset();
+				return GePlannedAction.none();
 			}
+			lastReason = GeReasonCode.COLLECT_STATE_MISMATCH;
 			return GePlannedAction.none();
 		}
 
