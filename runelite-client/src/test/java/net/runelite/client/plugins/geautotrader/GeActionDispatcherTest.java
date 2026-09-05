@@ -97,6 +97,32 @@ public class GeActionDispatcherTest
 	}
 
 	@Test
+	public void testOpenSellIgnoresGenericSellActionOnOccupiedSlot()
+	{
+		Client client = mock(Client.class);
+		Widget window = mock(Widget.class);
+		Widget occupiedSellAlias = actionWidget("Sell", 1, 51001, -1, "Steel dagger");
+		Widget slot2Sell = actionWidget("Create Sell offer", 2, 51002, -1, "");
+		Widget slot3Sell = actionWidget("Create Sell offer", 3, 51003, -1, "");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getChildren()).thenReturn(new Widget[]{occupiedSellAlias, slot2Sell, slot3Sell});
+
+		GeObservedState state = new GeObservedState(
+			true, false, true, true, false, 2_035_687L,
+			Arrays.asList(
+				new GeObservedSlot(1, "BUYING", 1207, 125, 0, 5),
+				new GeObservedSlot(2, "EMPTY", -1, 0, 0, 0),
+				new GeObservedSlot(3, "EMPTY", -1, 0, 0, 0)),
+			-1, 0, 0, GeTradeSide.UNKNOWN);
+		GePlannedAction action = GePlannedAction.of(
+			GePlannedActionType.OPEN_SELL, 2, 325, "Sardine", 100, 17, "v6-sell-2");
+
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, state));
+		verify(client).menuAction(2, 51002, MenuAction.CC_OP, 1, -1, "Create Sell offer", "");
+	}
+
+	@Test
 	public void testOpenSellRecognizesCreateSellOfferAction()
 	{
 		Client client = mock(Client.class);
@@ -120,6 +146,30 @@ public class GeActionDispatcherTest
 		GePlannedAction action = action(GePlannedActionType.OPEN_OFFER, 1982, "Tomato");
 		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, nonEmptySlotState()));
 		verify(client).menuAction(9, 54323, MenuAction.CC_OP, 1, -1, "View offer", "");
+	}
+
+	@Test
+	public void testOpenOfferIgnoresGenericViewActionOutsideTargetSlot()
+	{
+		Client client = mock(Client.class);
+		Widget window = mock(Widget.class);
+		Widget unrelatedView = actionWidget("View", 1, 52001, -1, "GE History");
+		Widget targetView = actionWidget("View offer", 2, 52002, -1, "Sardine");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getChildren()).thenReturn(new Widget[]{unrelatedView, targetView});
+
+		GeObservedState state = new GeObservedState(
+			true, false, true, true, false, 2_035_687L,
+			Arrays.asList(
+				new GeObservedSlot(1, "EMPTY", -1, 0, 0, 0),
+				new GeObservedSlot(2, "BOUGHT", 325, 100, 100, 17)),
+			-1, 0, 0, GeTradeSide.UNKNOWN);
+		GePlannedAction action = GePlannedAction.of(
+			GePlannedActionType.OPEN_OFFER, 2, 325, "Sardine", 100, 17, "v6-buy-2");
+
+		assertEquals(GeReasonCode.OK, dispatcher(client).dispatch(action, state));
+		verify(client).menuAction(2, 52002, MenuAction.CC_OP, 1, -1, "View offer", "Sardine");
 	}
 
 	@Test
