@@ -29,6 +29,21 @@ public class GeOfferStatusComponentDispatchTest
 	}
 
 	@Test
+	public void testCollectAcceptsLiveDynamicCollectItemsAction()
+	{
+		Client client = mock(Client.class);
+		Widget root = visibleRoot();
+		Widget collect = actionWidget("Collect-items", 6, 62005, "Steel dagger");
+		when(root.getDynamicChildren()).thenReturn(new Widget[]{collect});
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS_COLLECT)).thenReturn(root);
+
+		assertEquals(
+			GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.COLLECT), null));
+		verify(client).menuAction(6, 62005, MenuAction.CC_OP, 1, -1, "Collect-items", "Steel dagger");
+	}
+
+	@Test
 	public void testAbortUsesExactDetailsModifyComponentEvenWhenNotUnderWindowRoot()
 	{
 		Client client = mock(Client.class);
