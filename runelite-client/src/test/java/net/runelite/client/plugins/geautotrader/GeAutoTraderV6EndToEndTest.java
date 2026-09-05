@@ -24,6 +24,7 @@ import org.junit.runners.Suite;
 	GeSearchResultTraversalTest.class,
 	GeSlotRootDispatchTest.class,
 	GeActionDispatcherTest.class,
+	GeOfferStatusComponentDispatchTest.class,
 	GeTradeLedgerTest.class,
 	GeTradeLedgerPersistenceTest.class,
 	GeTradeSchedulerTest.class,
