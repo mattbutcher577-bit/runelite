@@ -426,9 +426,14 @@ public final class GeTradeStateMachine
 
 	private GePlannedAction idle(SlotContext context, GeObservedState state, GeObservedSlot observed, Instant now)
 	{
+		GeTradeObligation owned = tradeLedger.findBySlot(context.slot);
 		if (!observed.isEmpty())
 		{
-			return GePlannedAction.none();
+			return resumeOwnedOffer(context, observed, owned, now);
+		}
+		if (owned != null)
+		{
+			tradeLedger.remove(owned.getId());
 		}
 		if (anotherSetupWorkflowInProgress(context.slot))
 		{
@@ -464,12 +469,162 @@ public final class GeTradeStateMachine
 			candidate.getItemId(),
 			candidate.getName(),
 			candidate.getQuantity(),
-			candidate.getBuyPrice());
+			candidate.getBuyPrice(),
+			candidate.getSellPrice());
 		context.candidate = candidate;
 		context.obligationId = obligationId;
 		context.side = GeTradeSide.BUY;
 		context.phase = GeTradePhase.WAIT_BUY_SETUP;
 		return action(context, GePlannedActionType.OPEN_BUY);
+	}
+
+	private GePlannedAction resumeOwnedOffer(
+		SlotContext context,
+		GeObservedSlot observed,
+		GeTradeObligation obligation,
+		Instant now)
+	{
+		if (obligation == null)
+		{
+			return GePlannedAction.none();
+		}
+
+		String offerState = observed.getState();
+		if (obligation.getSide() == GeTradeSide.BUY)
+		{
+			boolean stateMatches = "BUYING".equalsIgnoreCase(offerState)
+				|| "BOUGHT".equalsIgnoreCase(offerState)
+				|| "CANCELLED_BUY".equalsIgnoreCase(offerState);
+			boolean identityMatches = stateMatches
+				&& observed.getItemId() == obligation.getItemId()
+				&& observed.getTotalQuantity() == obligation.getIntendedQuantity()
+				&& observed.getPrice() == obligation.getIntendedPrice();
+			if (!identityMatches)
+			{
+				tradeLedger.remove(obligation.getId());
+				lastReason = GeReasonCode.SLOT_IDENTITY_CHANGED;
+				return GePlannedAction.none();
+			}
+
+			int sellPrice = obligation.getTargetSellPrice();
+			if (sellPrice <= 0)
+			{
+				sellPrice = currentSellPrice(obligation.getItemId());
+			}
+			if (sellPrice <= 0)
+			{
+				lastReason = GeReasonCode.MARKET_DATA_UNAVAILABLE;
+				return GePlannedAction.none();
+			}
+
+			context.candidate = new GeCandidate(
+				obligation.getItemId(),
+				obligation.getItemName(),
+				obligation.getIntendedPrice(),
+				sellPrice,
+				obligation.getIntendedQuantity(),
+				0,
+				0,
+				0);
+			context.obligationId = obligation.getId();
+			context.side = GeTradeSide.BUY;
+			context.phase = GeTradePhase.MONITOR_BUY;
+			if (obligation.getPlacedAt() == null)
+			{
+				tradeLedger.markPlaced(obligation.getId(), now);
+			}
+			tradeLedger.markFilled(obligation.getId(), observed.getFilledQuantity());
+			updateObligationSequence(obligation.getId());
+			if (anotherSetupWorkflowInProgress(context.slot))
+			{
+				return GePlannedAction.none();
+			}
+			return monitorBuy(context, observed, now);
+		}
+
+		if (obligation.getSide() == GeTradeSide.SELL)
+		{
+			boolean stateMatches = "SELLING".equalsIgnoreCase(offerState)
+				|| "SOLD".equalsIgnoreCase(offerState);
+			boolean identityMatches = stateMatches
+				&& observed.getItemId() == obligation.getItemId()
+				&& observed.getTotalQuantity() == obligation.getIntendedQuantity()
+				&& observed.getPrice() == obligation.getIntendedPrice();
+			if (!identityMatches)
+			{
+				tradeLedger.remove(obligation.getId());
+				lastReason = GeReasonCode.SLOT_IDENTITY_CHANGED;
+				return GePlannedAction.none();
+			}
+
+			context.candidate = new GeCandidate(
+				obligation.getItemId(),
+				obligation.getItemName(),
+				1,
+				obligation.getIntendedPrice(),
+				obligation.getIntendedQuantity(),
+				0,
+				0,
+				0);
+			context.obligationId = obligation.getId();
+			context.side = GeTradeSide.SELL;
+			context.sellQuantity = obligation.getIntendedQuantity();
+			context.phase = GeTradePhase.MONITOR_SELL;
+			if (obligation.getPlacedAt() == null)
+			{
+				tradeLedger.markPlaced(obligation.getId(), now);
+			}
+			tradeLedger.markFilled(obligation.getId(), observed.getFilledQuantity());
+			updateObligationSequence(obligation.getId());
+			if (anotherSetupWorkflowInProgress(context.slot))
+			{
+				return GePlannedAction.none();
+			}
+			if ("SOLD".equalsIgnoreCase(offerState))
+			{
+				context.phase = GeTradePhase.WAIT_SELL_COLLECT_READY;
+				return action(context, GePlannedActionType.OPEN_OFFER);
+			}
+		}
+		return GePlannedAction.none();
+	}
+
+	private int currentSellPrice(int itemId)
+	{
+		GeMarketSnapshot market = marketSupplier == null ? null : marketSupplier.get();
+		if (market == null)
+		{
+			return 0;
+		}
+		for (GeMarketItem item : market.getItems())
+		{
+			if (item != null && item.getItemId() == itemId)
+			{
+				return item.getSellPrice();
+			}
+		}
+		return 0;
+	}
+
+	private void updateObligationSequence(String id)
+	{
+		if (id == null)
+		{
+			return;
+		}
+		int dash = id.lastIndexOf('-');
+		if (dash < 0 || dash + 1 >= id.length())
+		{
+			return;
+		}
+		try
+		{
+			obligationSequence = Math.max(obligationSequence, Long.parseLong(id.substring(dash + 1)));
+		}
+		catch (NumberFormatException ignored)
+		{
+			// Non-sequential legacy IDs are safe to ignore.
+		}
 	}
 
 	private GePlannedAction monitorBuy(SlotContext context, GeObservedSlot observed, Instant now)
