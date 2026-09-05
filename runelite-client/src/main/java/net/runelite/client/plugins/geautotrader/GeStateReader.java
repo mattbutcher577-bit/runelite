@@ -42,6 +42,7 @@ public final class GeStateReader
 		boolean membersWorld = client.getWorldType().contains(WorldType.MEMBERS);
 		boolean geOpen = isVisible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
 		boolean setupOpen = isVisible(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
+		boolean offerDetailsVisible = isVisible(InterfaceID.GeOffers.DETAILS);
 		boolean blockerActive = isVisible(WidgetInfo.BANK_CONTAINER)
 			|| isVisible(WidgetInfo.WORLD_MAP_VIEW)
 			|| isVisible(WidgetInfo.DIALOG_NPC_TEXT)
@@ -78,7 +79,8 @@ public final class GeStateReader
 			setupPrice,
 			setupSide,
 			promptMode,
-			readSearchResultItemIds(setupOpen, promptMode));
+			readSearchResultItemIds(setupOpen, promptMode),
+			offerDetailsVisible);
 	}
 
 	private List<GeObservedSlot> readSlots(GrandExchangeOffer[] offers)
@@ -165,6 +167,12 @@ public final class GeStateReader
 	private boolean isVisible(WidgetInfo info)
 	{
 		Widget widget = client.getWidget(info);
+		return widget != null && !widget.isHidden();
+	}
+
+	private boolean isVisible(int componentId)
+	{
+		Widget widget = client.getWidget(componentId);
 		return widget != null && !widget.isHidden();
 	}
 
