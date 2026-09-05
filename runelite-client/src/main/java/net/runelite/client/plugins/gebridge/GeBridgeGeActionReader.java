@@ -117,7 +117,7 @@ final class GeBridgeGeActionReader
 			tick,
 			GeBridgeBounds.from(window.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(window, "Back"),
-			findOfferStatusAction(collectRoot, detailsRoot, window, COLLECT_ALIASES),
+			findFirstOfferStatusAction(collectRoot, detailsRoot, window, COLLECT_ALIASES),
 			setup == null || setup.isHidden() ? GeBridgeBounds.invalid() : GeBridgeBounds.from(setup.getBounds()),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Choose item", "Select item", "Search"),
 			GeBridgeWidgetActionResolver.findUniqueAction(setupRoot, "Quantity", "Set quantity", "Enter quantity"),
@@ -138,14 +138,31 @@ final class GeBridgeGeActionReader
 		{
 			return result;
 		}
-
 		result = findUniqueVisible(details, aliases);
 		if (result.isValid())
 		{
 			return result;
 		}
-
 		return GeBridgeWidgetActionResolver.findUniqueAction(window, aliases);
+	}
+
+	private static GeBridgeBounds findFirstOfferStatusAction(
+		Widget preferred,
+		Widget details,
+		Widget window,
+		String... aliases)
+	{
+		GeBridgeBounds result = findFirstVisible(preferred, aliases);
+		if (result.isValid())
+		{
+			return result;
+		}
+		result = findFirstVisible(details, aliases);
+		if (result.isValid())
+		{
+			return result;
+		}
+		return first(GeBridgeWidgetActionResolver.findAllActions(window, aliases));
 	}
 
 	private static GeBridgeBounds findUniqueVisible(Widget root, String... aliases)
@@ -153,6 +170,18 @@ final class GeBridgeGeActionReader
 		return root == null || root.isHidden()
 			? GeBridgeBounds.invalid()
 			: GeBridgeWidgetActionResolver.findUniqueAction(root, aliases);
+	}
+
+	private static GeBridgeBounds findFirstVisible(Widget root, String... aliases)
+	{
+		return root == null || root.isHidden()
+			? GeBridgeBounds.invalid()
+			: first(GeBridgeWidgetActionResolver.findAllActions(root, aliases));
+	}
+
+	private static GeBridgeBounds first(List<GeBridgeBounds> bounds)
+	{
+		return bounds == null || bounds.isEmpty() ? GeBridgeBounds.invalid() : bounds.get(0);
 	}
 
 	private static Widget[] discoverSlotRoots(Widget window)
