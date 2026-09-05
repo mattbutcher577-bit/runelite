@@ -37,6 +37,8 @@ class GeBridgeLiveGeSections
 			itemManager,
 			null,
 			null,
+			null,
+			null,
 			tick);
 	}
 
@@ -64,6 +66,8 @@ class GeBridgeLiveGeSections
 			inventory,
 			itemManager,
 			offers,
+			null,
+			null,
 			null,
 			tick);
 	}
@@ -95,6 +99,8 @@ class GeBridgeLiveGeSections
 			itemManager,
 			offers,
 			null,
+			null,
+			null,
 			tick);
 	}
 
@@ -111,6 +117,41 @@ class GeBridgeLiveGeSections
 		ItemManager itemManager,
 		GrandExchangeOffer[] offers,
 		Widget[] slotRoots,
+		long tick)
+	{
+		return read(
+			offerSetupOpen,
+			messageLayerMode,
+			prompt,
+			inputField,
+			buySetup,
+			setupItemId,
+			window,
+			setup,
+			inventory,
+			itemManager,
+			offers,
+			slotRoots,
+			null,
+			null,
+			tick);
+	}
+
+	static GeBridgeLiveGeSections read(
+		boolean offerSetupOpen,
+		int messageLayerMode,
+		Widget prompt,
+		Widget inputField,
+		boolean buySetup,
+		int setupItemId,
+		Widget window,
+		Widget setup,
+		Widget inventory,
+		ItemManager itemManager,
+		GrandExchangeOffer[] offers,
+		Widget[] slotRoots,
+		Widget collectRoot,
+		Widget modifyRoot,
 		long tick)
 	{
 		String promptText = prompt == null ? null : Text.removeTags(prompt.getText());
@@ -133,7 +174,7 @@ class GeBridgeLiveGeSections
 			boundsOf(prompt),
 			boundsOf(inputField));
 		GeBridgeGeActionState geActions = GeBridgeGeActionReader.read(
-			window, setup, offers, slotRoots, tick);
+			window, setup, offers, slotRoots, collectRoot, modifyRoot, tick);
 		GeBridgeGeInventoryState geInventory = GeBridgeGeInventoryReader.read(inventory, itemManager, tick);
 		return new GeBridgeLiveGeSections(geInput, geActions, geInventory);
 	}
