@@ -3,6 +3,7 @@ package net.runelite.client.plugins.gebridge;
 import java.awt.Rectangle;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -21,13 +22,10 @@ public class GeBridgeGeActionReaderTest
 		Widget sell2 = action("Create Sell offer", 190, 50, 45, 30);
 		Widget open3 = action("View offer", 260, 50, 100, 70);
 
-		Widget window = mock(Widget.class);
-		when(window.isHidden()).thenReturn(false);
-		when(window.getBounds()).thenReturn(new Rectangle(0, 0, 500, 300));
-		when(window.getActions()).thenReturn(null);
-		when(window.getText()).thenReturn("");
-		when(window.getName()).thenReturn("");
-		when(window.getChildren()).thenReturn(new Widget[]{open1, buy2, sell2, open3});
+		Widget slot1 = slotRoot(InterfaceID.GeOffers.INDEX_0, new Rectangle(20, 50, 100, 70), open1);
+		Widget slot2 = slotRoot(InterfaceID.GeOffers.INDEX_1, new Rectangle(140, 50, 95, 70), buy2, sell2);
+		Widget slot3 = slotRoot(InterfaceID.GeOffers.INDEX_2, new Rectangle(260, 50, 100, 70), open3);
+		Widget window = window(slot1, slot2, slot3);
 
 		GrandExchangeOffer occupied1 = offer(GrandExchangeOfferState.BUYING);
 		GrandExchangeOffer empty2 = offer(GrandExchangeOfferState.EMPTY);
@@ -55,30 +53,35 @@ public class GeBridgeGeActionReaderTest
 	}
 
 	@Test
-	public void testGenericOccupiedSlotActionsDoNotShiftLiveEmptySlotButtons()
+	public void testLiveSlotRootsPreventOccupiedOffersFromShiftingEmptyButtons()
 	{
 		Widget occupiedOpen = action("View offer", 27, 85, 115, 110);
 		Widget occupiedBuyAlias = action("Buy", 27, 85, 115, 25);
 		Widget occupiedSellAlias = action("Sell", 27, 111, 115, 25);
+		Widget textOnlyFalsePositive = text("Create Buy offer", 27, 85, 115, 25);
 		Widget buy2 = action("Create Buy offer", 150, 128, 46, 45);
 		Widget sell2 = action("Create Sell offer", 206, 128, 46, 45);
 		Widget buy3 = action("Create Buy offer", 267, 128, 46, 45);
 		Widget sell3 = action("Create Sell offer", 323, 128, 46, 45);
 
-		Widget window = mock(Widget.class);
-		when(window.isHidden()).thenReturn(false);
-		when(window.getBounds()).thenReturn(new Rectangle(4, 4, 512, 334));
-		when(window.getActions()).thenReturn(null);
-		when(window.getText()).thenReturn("");
-		when(window.getName()).thenReturn("");
-		when(window.getChildren()).thenReturn(new Widget[]{
+		Widget slot1 = slotRoot(
+			InterfaceID.GeOffers.INDEX_0,
+			new Rectangle(27, 85, 115, 110),
 			occupiedOpen,
 			occupiedBuyAlias,
 			occupiedSellAlias,
+			textOnlyFalsePositive);
+		Widget slot2 = slotRoot(
+			InterfaceID.GeOffers.INDEX_1,
+			new Rectangle(144, 85, 115, 110),
 			buy2,
-			sell2,
+			sell2);
+		Widget slot3 = slotRoot(
+			InterfaceID.GeOffers.INDEX_2,
+			new Rectangle(261, 85, 115, 110),
 			buy3,
-			sell3});
+			sell3);
+		Widget window = window(slot1, slot2, slot3);
 
 		GeBridgeGeActionState state = GeBridgeGeActionReader.read(
 			window,
@@ -106,6 +109,31 @@ public class GeBridgeGeActionReaderTest
 		return offer;
 	}
 
+	private static Widget window(Widget... slots)
+	{
+		Widget window = mock(Widget.class);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getBounds()).thenReturn(new Rectangle(4, 4, 512, 334));
+		when(window.getActions()).thenReturn(null);
+		when(window.getText()).thenReturn("");
+		when(window.getName()).thenReturn("");
+		when(window.getChildren()).thenReturn(slots);
+		return window;
+	}
+
+	private static Widget slotRoot(int id, Rectangle bounds, Widget... children)
+	{
+		Widget widget = mock(Widget.class);
+		when(widget.isHidden()).thenReturn(false);
+		when(widget.getId()).thenReturn(id);
+		when(widget.getBounds()).thenReturn(bounds);
+		when(widget.getActions()).thenReturn(null);
+		when(widget.getText()).thenReturn("");
+		when(widget.getName()).thenReturn("");
+		when(widget.getChildren()).thenReturn(children);
+		return widget;
+	}
+
 	private static Widget action(String action, int x, int y, int width, int height)
 	{
 		Widget widget = mock(Widget.class);
@@ -115,6 +143,17 @@ public class GeBridgeGeActionReaderTest
 		when(widget.getName()).thenReturn("");
 		when(widget.getBounds()).thenReturn(new Rectangle(x, y, width, height));
 		when(widget.getChildren()).thenReturn(null);
+		return widget;
+	}
+
+	private static Widget text(String text, int x, int y, int width, int height)
+	{
+		Widget widget = mock(Widget.class);
+		when(widget.isHidden()).thenReturn(false);
+		when(widget.getActions()).thenReturn(null);
+		when(widget.getText()).thenReturn(text);
+		when(widget.getName()).thenReturn("");
+		when(widget.getBounds()).thenReturn(new Rectangle(x, y, width, height));
 		return widget;
 	}
 }
