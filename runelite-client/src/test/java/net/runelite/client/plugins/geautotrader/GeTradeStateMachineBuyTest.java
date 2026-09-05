@@ -1,0 +1,169 @@
+package net.runelite.client.plugins.geautotrader;
+
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+public class GeTradeStateMachineBuyTest
+{
+	@Test
+	public void testBuyLifecycleRetriesConfirmUntilPlacementProof()
+	{
+		Instant now = Instant.parse("2026-09-04T18:00:00Z");
+		GeMarketSnapshot market = new GeMarketSnapshot(now, Collections.singletonList(
+			new GeMarketItem(1127, "Adamant platebody", false, 125, 9001, 9321, 500)));
+		GeTradeLedger trades = new GeTradeLedger();
+		GeTradeStateMachine machine = new GeTradeStateMachine(
+			config(), new GeLimitLedger(), trades, () -> market, () -> true, () -> false);
+
+		GePlannedAction action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now);
+		assertEquals(GePlannedActionType.OPEN_BUY, action.getType());
+		assertEquals(1, action.getSlot());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.ITEM_SEARCH, -1, 0, 0, GeTradeSide.BUY), now.plusSeconds(1));
+		assertEquals(GePlannedActionType.TYPE_ITEM_SEARCH, action.getType());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.BUY), now.plusSeconds(2));
+		assertEquals(GePlannedActionType.SELECT_ITEM, action.getType());
+		assertEquals(1127, action.getItemId());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 0, 0, GeTradeSide.BUY), now.plusSeconds(3));
+		assertEquals(GePlannedActionType.OPEN_QUANTITY, action.getType());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.QUANTITY, 1127, 0, 0, GeTradeSide.BUY), now.plusSeconds(4));
+		assertEquals(GePlannedActionType.TYPE_QUANTITY, action.getType());
+		assertEquals(125, action.getQuantity());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 0, GeTradeSide.BUY), now.plusSeconds(5));
+		assertEquals(GePlannedActionType.OPEN_PRICE, action.getType());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.PRICE, 1127, 125, 0, GeTradeSide.BUY), now.plusSeconds(6));
+		assertEquals(GePlannedActionType.TYPE_PRICE, action.getType());
+		assertEquals(9001, action.getPrice());
+
+		action = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 9001, GeTradeSide.BUY), now.plusSeconds(7));
+		assertEquals(GePlannedActionType.CONFIRM, action.getType());
+
+		GePlannedAction retry = machine.onTick(state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 9001, GeTradeSide.BUY), now.plusSeconds(8));
+		assertEquals(GePlannedActionType.CONFIRM, retry.getType());
+
+		machine.onTick(state(
+			slot(1, "BUYING", 1127, 125, 0, 9001), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now.plusSeconds(9));
+		GeTradeObligation obligation = trades.all().iterator().next();
+		assertNotNull(obligation.getPlacedAt());
+	}
+
+	@Test
+	public void testMarketRecoveryWithNoCandidateClearsUnavailableReason()
+	{
+		Instant now = Instant.parse("2026-09-04T18:00:00Z");
+		AtomicReference<GeMarketSnapshot> market = new AtomicReference<>();
+		GeTradeStateMachine machine = new GeTradeStateMachine(
+			config(), new GeLimitLedger(), new GeTradeLedger(), market::get, () -> true, () -> false);
+		GeObservedState emptyGe = state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN);
+
+		assertEquals(GePlannedActionType.NONE, machine.onTick(emptyGe, now).getType());
+		assertEquals(GeReasonCode.MARKET_DATA_UNAVAILABLE, machine.getLastReason());
+
+		market.set(new GeMarketSnapshot(now.plusSeconds(1), Collections.emptyList()));
+		assertEquals(GePlannedActionType.NONE, machine.onTick(emptyGe, now.plusSeconds(1)).getType());
+		assertEquals("NO_OPPORTUNITY", machine.getLastReason().name());
+	}
+
+	@Test
+	public void testManualRestartRecoversAbandonedPreBuySetupAndReleasesReservation()
+	{
+		Instant now = Instant.parse("2026-09-04T18:00:00Z");
+		GeMarketSnapshot market = new GeMarketSnapshot(now, Collections.singletonList(
+			new GeMarketItem(1127, "Adamant platebody", false, 125, 9001, 9321, 500)));
+		GeTradeLedger trades = new GeTradeLedger();
+		GeTradeStateMachine machine = new GeTradeStateMachine(
+			config(), new GeLimitLedger(), trades, () -> market, () -> true, () -> false);
+		GeObservedState emptyGe = state(
+			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN);
+
+		GePlannedAction action = machine.onTick(emptyGe, now);
+		assertEquals(GePlannedActionType.OPEN_BUY, action.getType());
+		assertEquals(GeTradePhase.WAIT_BUY_SETUP, machine.getPhase(1));
+		assertTrue(trades.reservedGp() > 0L);
+
+		assertEquals(1, machine.recoverAbandonedBuySetups(emptyGe));
+		assertEquals(GeTradePhase.IDLE, machine.getPhase(1));
+		assertEquals(0L, trades.reservedGp());
+
+		action = machine.onTick(emptyGe, now.plusSeconds(1));
+		assertEquals(GePlannedActionType.OPEN_BUY, action.getType());
+	}
+
+	@Test
+	public void testManualRestartDoesNotClearARealPlacedOffer()
+	{
+		Instant now = Instant.parse("2026-09-04T18:00:00Z");
+		GeMarketSnapshot market = new GeMarketSnapshot(now, Collections.singletonList(
+			new GeMarketItem(1127, "Adamant platebody", false, 125, 9001, 9321, 500)));
+		GeTradeLedger trades = new GeTradeLedger();
+		GeTradeStateMachine machine = new GeTradeStateMachine(
+			config(), new GeLimitLedger(), trades, () -> market, () -> true, () -> false);
+
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now);
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.ITEM_SEARCH, -1, 0, 0, GeTradeSide.BUY), now.plusSeconds(1));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, -1, 0, 0, GeTradeSide.BUY), now.plusSeconds(2));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 0, 0, GeTradeSide.BUY), now.plusSeconds(3));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.QUANTITY, 1127, 0, 0, GeTradeSide.BUY), now.plusSeconds(4));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 0, GeTradeSide.BUY), now.plusSeconds(5));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.PRICE, 1127, 125, 0, GeTradeSide.BUY), now.plusSeconds(6));
+		machine.onTick(state(slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 9001, GeTradeSide.BUY), now.plusSeconds(7));
+
+		GeObservedState placed = state(
+			slot(1, "BUYING", 1127, 125, 0, 9001), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN);
+		assertEquals(0, machine.recoverAbandonedBuySetups(placed));
+		assertEquals(GeTradePhase.WAIT_BUY_SLOT, machine.getPhase(1));
+		assertTrue(trades.reservedGp() > 0L);
+	}
+
+	private static GeObservedSlot slot(int slot, String state, int itemId, int total, int filled, int price)
+	{
+		return new GeObservedSlot(slot, state, itemId, total, filled, price);
+	}
+
+	private static GeObservedState state(
+		GeObservedSlot slot1,
+		GePromptMode prompt,
+		int setupItemId,
+		int setupQuantity,
+		int setupPrice,
+		GeTradeSide side)
+	{
+		return new GeObservedState(
+			true, false, true, true, false, 301, 2_035_687L,
+			Arrays.asList(slot1, slot(2, "EMPTY", -1, 0, 0, 0), slot(3, "EMPTY", -1, 0, 0, 0)),
+			Collections.emptyMap(), setupItemId, setupQuantity, setupPrice, side, prompt);
+	}
+
+	private static GeAutoTraderConfig config()
+	{
+		return new GeAutoTraderConfig()
+		{
+			@Override public int minRoiBasisPoints() { return 100; }
+			@Override public int minFiveMinuteVolume() { return 10; }
+			@Override public int maxUnitBuyPrice() { return 20_000_000; }
+			@Override public int maxQuantityPerOffer() { return 1000; }
+			@Override public int marketRefreshSeconds() { return 30; }
+		};
+	}
+}
