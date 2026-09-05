@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 public class GeTradeStateMachineSetupSerializationTest
 {
 	@Test
-	public void testSecondSlotDoesNotStartWhileFirstBuySetupIsPending()
+	public void testFirstSlotRetriesWhilePreventingSecondSlotSetup()
 	{
 		Instant now = Instant.parse("2026-09-04T18:00:00Z");
 		GeMarketSnapshot market = market(now);
@@ -27,8 +27,9 @@ public class GeTradeStateMachineSetupSerializationTest
 		assertEquals(1, first.getSlot());
 		assertEquals(GeTradePhase.WAIT_BUY_SETUP, machine.getPhase(1));
 
-		GePlannedAction second = machine.onTick(emptyGe, now.plusSeconds(1));
-		assertEquals(GePlannedActionType.NONE, second.getType());
+		GePlannedAction retry = machine.onTick(emptyGe, now.plusSeconds(1));
+		assertEquals(GePlannedActionType.OPEN_BUY, retry.getType());
+		assertEquals(1, retry.getSlot());
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(2));
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(3));
 	}
@@ -57,10 +58,11 @@ public class GeTradeStateMachineSetupSerializationTest
 		assertEquals(2, secondSlot.getSlot());
 		assertEquals(GeTradePhase.WAIT_BUY_SETUP, machine.getPhase(2));
 
-		GePlannedAction collectAttempt = machine.onTick(state(
+		GePlannedAction setupRetry = machine.onTick(state(
 			slot(1, "BOUGHT", 1127, 125, 125, 9001), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now.plusSeconds(9));
-		assertEquals(GePlannedActionType.NONE, collectAttempt.getType());
 		assertEquals(GeTradePhase.MONITOR_BUY, machine.getPhase(1));
+		assertEquals(GePlannedActionType.OPEN_BUY, setupRetry.getType());
+		assertEquals(2, setupRetry.getSlot());
 	}
 
 	@Test
