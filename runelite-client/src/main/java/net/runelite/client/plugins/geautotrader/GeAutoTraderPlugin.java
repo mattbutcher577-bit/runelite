@@ -31,6 +31,7 @@ import okhttp3.OkHttpClient;
 public class GeAutoTraderPlugin extends Plugin implements KeyListener
 {
 	static final String CONFIG_GROUP = "geautotraderv6";
+	private static final String RUNTIME_LEDGER_KEY = "runtimeOwnedOffersV1";
 
 	@Inject
 	private Client client;
@@ -40,6 +41,9 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 
 	@Inject
 	private Gson gson;
+
+	@Inject
+	private ConfigManager configManager;
 
 	@Inject
 	private OkHttpClient httpClient;
@@ -68,6 +72,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	private boolean manualRestartAllowed;
 	private boolean restartArmed;
 	private boolean restartRequested;
+	private String lastPersistedLedger = "";
 
 	@Provides
 	GeAutoTraderConfig provideConfig(ConfigManager configManager)
@@ -85,6 +90,10 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		restartRequested = false;
 		loggedInTicks = 0;
 		tradeLedger = new GeTradeLedger();
+		String persistedLedger = configManager == null
+			? null : configManager.getConfiguration(CONFIG_GROUP, RUNTIME_LEDGER_KEY);
+		GeTradeLedgerPersistence.restore(gson, persistedLedger, tradeLedger);
+		lastPersistedLedger = persistedLedger == null ? "" : persistedLedger;
 		limitLedger = new GeLimitLedger();
 		stateReader = new GeStateReader(client);
 		marketService = new GeMarketService(
@@ -109,6 +118,7 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	@Override
 	protected void shutDown()
 	{
+		persistRuntimeLedger();
 		stopped.set(true);
 		stopCause = GeStopCause.NONE;
 		manualRestartAllowed = false;
@@ -202,12 +212,14 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		if (stopped.get() && stopCause == GeStopCause.EXECUTION_FAILURE)
 		{
 			lastAction = GePlannedAction.none();
+			persistRuntimeLedger();
 			return;
 		}
 
 		GePlannedAction action = stateMachine.onTick(lastState, Instant.now());
 		lastAction = action;
 		lastReason = stateMachine.getLastReason();
+		persistRuntimeLedger();
 		if (action.getType() == GePlannedActionType.NONE)
 		{
 			return;
@@ -221,6 +233,21 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			// stopping prevents it from acting on an unproved transition.
 			stopForExecutionFailure();
 		}
+	}
+
+	private void persistRuntimeLedger()
+	{
+		if (configManager == null || gson == null || tradeLedger == null)
+		{
+			return;
+		}
+		String encoded = GeTradeLedgerPersistence.encode(gson, tradeLedger);
+		if (encoded.equals(lastPersistedLedger))
+		{
+			return;
+		}
+		configManager.setConfiguration(CONFIG_GROUP, RUNTIME_LEDGER_KEY, encoded);
+		lastPersistedLedger = encoded;
 	}
 
 	private static boolean canCompleteManualRestart(GeObservedState state)
