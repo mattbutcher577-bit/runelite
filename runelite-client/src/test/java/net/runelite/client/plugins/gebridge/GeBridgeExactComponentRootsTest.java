@@ -17,7 +17,7 @@ public class GeBridgeExactComponentRootsTest
 		Widget window = visibleRoot(new Rectangle(4, 4, 512, 334));
 		Widget open = action("View offer", 27, 85, 115, 110);
 		Widget slotRoot = visibleRoot(new Rectangle(27, 85, 115, 110), open);
-		Widget collect = action("Collect", 430, 245, 36, 36);
+		Widget collect = action("Collect-items", 430, 245, 36, 36);
 		Widget collectRoot = visibleRoot(new Rectangle(420, 235, 80, 50), collect);
 		Widget abort = action("Abort offer", 85, 276, 80, 23);
 		Widget modifyRoot = visibleRoot(new Rectangle(75, 266, 100, 35), abort);
@@ -45,7 +45,7 @@ public class GeBridgeExactComponentRootsTest
 		Widget window = visibleRoot(new Rectangle(4, 4, 512, 334));
 		Widget collectRoot = visibleRoot(new Rectangle(420, 235, 80, 50));
 		Widget modifyRoot = visibleRoot(new Rectangle(75, 266, 100, 35));
-		Widget collect = action("Collect", 430, 245, 36, 36);
+		Widget collect = action("Collect-note", 430, 245, 36, 36);
 		Widget abort = action("Abort offer", 85, 276, 80, 23);
 		Widget detailsRoot = visibleRoot(new Rectangle(20, 35, 470, 280), collect, abort);
 
