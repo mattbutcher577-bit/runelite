@@ -29,10 +29,10 @@ final class GeBridgeGeActionReader
 		}
 
 		List<GeBridgeBounds> buys = GeBridgeWidgetActionResolver.findAll(
-			window, "Create Buy offer", "Buy");
+			window, "Create Buy offer");
 		List<GeBridgeBounds> sells = GeBridgeWidgetActionResolver.findAll(
-			window, "Create Sell offer", "Sell");
-		List<GeBridgeBounds> opens = GeBridgeWidgetActionResolver.findAll(window, "View offer", "View");
+			window, "Create Sell offer");
+		List<GeBridgeBounds> opens = GeBridgeWidgetActionResolver.findAll(window, "View offer");
 		List<GeBridgeGeActionSlot> slots = offers == null
 			? legacyLayout(buys, sells, opens)
 			: offerAlignedLayout(offers, buys, sells, opens);
