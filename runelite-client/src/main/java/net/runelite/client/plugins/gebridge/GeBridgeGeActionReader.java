@@ -1,13 +1,32 @@
 package net.runelite.client.plugins.gebridge;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 
 final class GeBridgeGeActionReader
 {
+	private static final int MAX_WIDGETS = 512;
+	private static final int[] SLOT_COMPONENT_IDS =
+	{
+		InterfaceID.GeOffers.INDEX_0,
+		InterfaceID.GeOffers.INDEX_1,
+		InterfaceID.GeOffers.INDEX_2,
+		InterfaceID.GeOffers.INDEX_3,
+		InterfaceID.GeOffers.INDEX_4,
+		InterfaceID.GeOffers.INDEX_5,
+		InterfaceID.GeOffers.INDEX_6,
+		InterfaceID.GeOffers.INDEX_7
+	};
+
 	private GeBridgeGeActionReader()
 	{
 	}
@@ -39,9 +58,10 @@ final class GeBridgeGeActionReader
 		}
 
 		List<GeBridgeGeActionSlot> slots;
-		if (offers != null && slotRoots != null)
+		if (offers != null)
 		{
-			slots = exactSlotLayout(offers, slotRoots);
+			Widget[] exactRoots = slotRoots == null ? discoverSlotRoots(window) : slotRoots;
+			slots = exactSlotLayout(offers, exactRoots);
 		}
 		else
 		{
@@ -51,9 +71,7 @@ final class GeBridgeGeActionReader
 				window, "Create Sell offer");
 			List<GeBridgeBounds> opens = GeBridgeWidgetActionResolver.findAllActions(
 				window, "View offer");
-			slots = offers == null
-				? legacyLayout(buys, sells, opens)
-				: offerAlignedLayout(offers, buys, sells, opens);
+			slots = legacyLayout(buys, sells, opens);
 		}
 
 		Widget setupRoot = setup != null && !setup.isHidden() ? setup : window;
@@ -71,6 +89,52 @@ final class GeBridgeGeActionReader
 			slots);
 	}
 
+	private static Widget[] discoverSlotRoots(Widget window)
+	{
+		Widget[] result = new Widget[SLOT_COMPONENT_IDS.length];
+		Set<Widget> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+		Deque<Widget> queue = new ArrayDeque<>();
+		queue.add(window);
+
+		while (!queue.isEmpty() && seen.size() < MAX_WIDGETS)
+		{
+			Widget widget = queue.removeFirst();
+			if (widget == null || !seen.add(widget) || widget.isHidden())
+			{
+				continue;
+			}
+			int id = widget.getId();
+			for (int slot = 0; slot < SLOT_COMPONENT_IDS.length; slot++)
+			{
+				if (id == SLOT_COMPONENT_IDS[slot])
+				{
+					result[slot] = widget;
+					break;
+				}
+			}
+			enqueue(queue, widget.getChildren());
+			enqueue(queue, widget.getDynamicChildren());
+			enqueue(queue, widget.getStaticChildren());
+			enqueue(queue, widget.getNestedChildren());
+		}
+		return result;
+	}
+
+	private static void enqueue(Deque<Widget> queue, Widget[] children)
+	{
+		if (children == null)
+		{
+			return;
+		}
+		for (Widget child : children)
+		{
+			if (child != null)
+			{
+				queue.addLast(child);
+			}
+		}
+	}
+
 	private static List<GeBridgeGeActionSlot> exactSlotLayout(
 		GrandExchangeOffer[] offers,
 		Widget[] slotRoots)
@@ -82,7 +146,7 @@ final class GeBridgeGeActionReader
 			GrandExchangeOfferState state = offer == null || offer.getState() == null
 				? GrandExchangeOfferState.EMPTY
 				: offer.getState();
-			Widget root = slot < slotRoots.length ? slotRoots[slot] : null;
+			Widget root = slotRoots != null && slot < slotRoots.length ? slotRoots[slot] : null;
 
 			GeBridgeBounds buy = GeBridgeBounds.invalid();
 			GeBridgeBounds sell = GeBridgeBounds.invalid();
@@ -115,48 +179,6 @@ final class GeBridgeGeActionReader
 		return widget == null || widget.isHidden()
 			? GeBridgeBounds.invalid()
 			: GeBridgeBounds.from(widget.getBounds());
-	}
-
-	private static List<GeBridgeGeActionSlot> offerAlignedLayout(
-		GrandExchangeOffer[] offers,
-		List<GeBridgeBounds> buys,
-		List<GeBridgeBounds> sells,
-		List<GeBridgeBounds> opens)
-	{
-		List<GeBridgeGeActionSlot> slots = new ArrayList<>();
-		int buyIndex = 0;
-		int sellIndex = 0;
-		int openIndex = 0;
-
-		for (int slot = 0; slot < offers.length; slot++)
-		{
-			GrandExchangeOffer offer = offers[slot];
-			GrandExchangeOfferState state = offer == null || offer.getState() == null
-				? GrandExchangeOfferState.EMPTY
-				: offer.getState();
-
-			GeBridgeBounds buy = GeBridgeBounds.invalid();
-			GeBridgeBounds sell = GeBridgeBounds.invalid();
-			GeBridgeBounds open = GeBridgeBounds.invalid();
-
-			if (state == GrandExchangeOfferState.EMPTY)
-			{
-				buy = at(buys, buyIndex++);
-				sell = at(sells, sellIndex++);
-			}
-			else
-			{
-				open = at(opens, openIndex++);
-			}
-
-			slots.add(new GeBridgeGeActionSlot(
-				slot,
-				GeBridgeBounds.union(buy, sell, open),
-				buy,
-				sell,
-				open));
-		}
-		return slots;
 	}
 
 	private static List<GeBridgeGeActionSlot> legacyLayout(
