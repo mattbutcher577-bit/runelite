@@ -12,7 +12,7 @@ import org.junit.Test;
 public class GeTradeStateMachineBuyTest
 {
 	@Test
-	public void testBuyLifecycleEmitsOneActionPerVerifiedPhase()
+	public void testBuyLifecycleRetriesConfirmUntilPlacementProof()
 	{
 		Instant now = Instant.parse("2026-09-04T18:00:00Z");
 		GeMarketSnapshot market = new GeMarketSnapshot(now, Collections.singletonList(
@@ -57,9 +57,9 @@ public class GeTradeStateMachineBuyTest
 			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 9001, GeTradeSide.BUY), now.plusSeconds(7));
 		assertEquals(GePlannedActionType.CONFIRM, action.getType());
 
-		GePlannedAction duplicate = machine.onTick(state(
+		GePlannedAction retry = machine.onTick(state(
 			slot(1, "EMPTY", -1, 0, 0, 0), GePromptMode.NONE, 1127, 125, 9001, GeTradeSide.BUY), now.plusSeconds(8));
-		assertEquals(GePlannedActionType.NONE, duplicate.getType());
+		assertEquals(GePlannedActionType.CONFIRM, retry.getType());
 
 		machine.onTick(state(
 			slot(1, "BUYING", 1127, 125, 0, 9001), GePromptMode.NONE, -1, 0, 0, GeTradeSide.UNKNOWN), now.plusSeconds(9));
