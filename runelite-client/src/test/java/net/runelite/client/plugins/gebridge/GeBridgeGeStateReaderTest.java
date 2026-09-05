@@ -2,11 +2,13 @@ package net.runelite.client.plugins.gebridge;
 
 import java.awt.Rectangle;
 import net.runelite.api.Client;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -37,6 +39,18 @@ public class GeBridgeGeStateReaderTest
 		assertEquals(1000, state.getOfferSetupQuantity());
 		assertEquals(12, state.getOfferSetupPrice());
 		assertEquals("BUY", state.getOfferSetupType());
+	}
+
+	@Test
+	public void testReadsExactOfferDetailsVisibility()
+	{
+		Client client = mock(Client.class);
+		GeBridgeInterfaceState interfaces = new GeBridgeInterfaceState(
+			true, false, false, false, false, false, false);
+		Widget details = widget(20, 40, 472, 258);
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS)).thenReturn(details);
+
+		assertTrue(GeBridgeGeStateReader.read(client, interfaces).isOfferDetailsVisible());
 	}
 
 	private static Widget widget(int x, int y, int width, int height)
