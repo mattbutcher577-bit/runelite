@@ -39,6 +39,30 @@ public class GeBridgeExactComponentRootsTest
 		assertTrue(state.getAbort().isValid());
 	}
 
+	@Test
+	public void testDetailsContainerFallbackFindsCollectAndAbortWhenSpecificRootsHaveNoActions()
+	{
+		Widget window = visibleRoot(new Rectangle(4, 4, 512, 334));
+		Widget collectRoot = visibleRoot(new Rectangle(420, 235, 80, 50));
+		Widget modifyRoot = visibleRoot(new Rectangle(75, 266, 100, 35));
+		Widget collect = action("Collect", 430, 245, 36, 36);
+		Widget abort = action("Abort offer", 85, 276, 80, 23);
+		Widget detailsRoot = visibleRoot(new Rectangle(20, 35, 470, 280), collect, abort);
+
+		GeBridgeGeActionState state = GeBridgeGeActionReader.read(
+			window,
+			null,
+			null,
+			null,
+			detailsRoot,
+			collectRoot,
+			modifyRoot,
+			102L);
+
+		assertTrue(state.getCollect().isValid());
+		assertTrue(state.getAbort().isValid());
+	}
+
 	private static Widget visibleRoot(Rectangle bounds, Widget... children)
 	{
 		Widget widget = mock(Widget.class);
