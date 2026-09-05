@@ -1,8 +1,5 @@
 package net.runelite.client.plugins.geautotrader;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -70,33 +67,48 @@ public final class GeActionDispatcher
 		boolean empty,
 		String... aliases)
 	{
-		Widget window = visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
-		if (window == null || state == null || !GeSafetyPolicy.canUseSlot(targetSlot))
+		if (state == null
+			|| !GeSafetyPolicy.canUseSlot(targetSlot)
+			|| visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER) == null)
 		{
 			return null;
 		}
-		List<GeWidgetActionSpec> actions = GeWidgetActionResolver.findAll(window, aliases);
-		List<GeObservedSlot> slots = new ArrayList<>(state.getSlots());
-		slots.sort(Comparator.comparingInt(GeObservedSlot::getSlot));
-		int actionIndex = 0;
-		for (GeObservedSlot slot : slots)
+
+		GeObservedSlot observed = null;
+		for (GeObservedSlot slot : state.getSlots())
 		{
-			if (slot == null)
+			if (slot != null && slot.getSlot() == targetSlot)
 			{
-				continue;
+				observed = slot;
+				break;
 			}
-			boolean matches = empty ? slot.isEmpty() : !slot.isEmpty();
-			if (!matches)
-			{
-				continue;
-			}
-			if (slot.getSlot() == targetSlot)
-			{
-				return actionIndex < actions.size() ? actions.get(actionIndex) : null;
-			}
-			actionIndex++;
 		}
-		return null;
+		if (observed == null || observed.isEmpty() != empty)
+		{
+			return null;
+		}
+
+		Widget root = slotRoot(targetSlot);
+		if (root == null || root.isHidden())
+		{
+			return null;
+		}
+		return GeWidgetActionResolver.findUnique(root, aliases);
+	}
+
+	private Widget slotRoot(int targetSlot)
+	{
+		switch (targetSlot)
+		{
+			case 1:
+				return client.getWidget(InterfaceID.GeOffers.INDEX_0);
+			case 2:
+				return client.getWidget(InterfaceID.GeOffers.INDEX_1);
+			case 3:
+				return client.getWidget(InterfaceID.GeOffers.INDEX_2);
+			default:
+				return null;
+		}
 	}
 
 	private GeWidgetActionSpec findSearchResultAction(int itemId, String itemName)
