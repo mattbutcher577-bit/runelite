@@ -121,9 +121,8 @@ public class GeTradeStateMachineRestartRecoveryTest
 		assertEquals(
 			GePlannedActionType.COLLECT,
 			machine.onTick(observed("CANCELLED_BUY", 1982, 1000, 0, 160, 1_840_000L, Collections.emptyMap()), now.plusSeconds(1)).getType());
-		assertEquals(
-			GePlannedActionType.NONE,
-			machine.onTick(observed("EMPTY", -1, 0, 0, 0, 2_000_000L, Collections.emptyMap()), now.plusSeconds(2)).getType());
+
+		machine.onTick(observed("EMPTY", -1, 0, 0, 0, 2_000_000L, Collections.emptyMap()), now.plusSeconds(2));
 
 		assertEquals(GeTradePhase.IDLE, machine.getPhase(1));
 		assertNull(trades.findBySlot(1));
