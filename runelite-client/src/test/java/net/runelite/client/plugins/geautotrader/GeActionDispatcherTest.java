@@ -205,8 +205,38 @@ public class GeActionDispatcherTest
 		assertSetupAction(GePlannedActionType.OPEN_QUANTITY, "Set quantity");
 		assertSetupAction(GePlannedActionType.OPEN_PRICE, "Set price");
 		assertSetupAction(GePlannedActionType.CONFIRM, "Confirm");
-		assertSetupAction(GePlannedActionType.ABORT_BUY, "Abort offer");
-		assertSetupAction(GePlannedActionType.COLLECT, "Collect items");
+	}
+
+	@Test
+	public void testCollectOnOfferStatusResolvesFromGeWindowRoot()
+	{
+		Client client = mock(Client.class);
+		Widget setup = visibleWidget();
+		Widget window = visibleWidget();
+		Widget collect = actionWidget("Collect", 6, 62001, -1, "Steel dagger");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(setup);
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.getChildren()).thenReturn(new Widget[]{collect});
+
+		assertEquals(GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.COLLECT, 1207, "Steel dagger"), null));
+		verify(client).menuAction(6, 62001, MenuAction.CC_OP, 1, -1, "Collect", "Steel dagger");
+	}
+
+	@Test
+	public void testAbortOnOfferStatusResolvesFromGeWindowRoot()
+	{
+		Client client = mock(Client.class);
+		Widget setup = visibleWidget();
+		Widget window = visibleWidget();
+		Widget abort = actionWidget("Abort offer", 7, 62002, -1, "Steel dagger");
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER)).thenReturn(setup);
+		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
+		when(window.getChildren()).thenReturn(new Widget[]{abort});
+
+		assertEquals(GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.ABORT_BUY, 1207, "Steel dagger"), null));
+		verify(client).menuAction(7, 62002, MenuAction.CC_OP, 1, -1, "Abort offer", "Steel dagger");
 	}
 
 	@Test
