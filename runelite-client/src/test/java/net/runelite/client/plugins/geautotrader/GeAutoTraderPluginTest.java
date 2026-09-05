@@ -73,6 +73,18 @@ public class GeAutoTraderPluginTest
 	}
 
 	@Test
+	public void testTransientTargetUnavailableIsReportedAsRunning() throws Exception
+	{
+		GeAutoTraderPlugin plugin = new GeAutoTraderPlugin();
+		Field configField = GeAutoTraderPlugin.class.getDeclaredField("config");
+		configField.setAccessible(true);
+		configField.set(plugin, enabledConfig());
+		setLastReason(plugin, GeReasonCode.EXECUTION_TARGET_UNAVAILABLE);
+
+		assertEquals("RUNNING", plugin.getStatusText());
+	}
+
+	@Test
 	public void testNoOpportunityIsReportedAsRunningScanState() throws Exception
 	{
 		GeReasonCode noOpportunity = null;
