@@ -66,6 +66,11 @@ public final class GeAutoTraderOverlay extends OverlayPanel
 			{
 				right += " " + candidate.getName();
 			}
+			GePlannedActionType pending = plugin.getPendingAction(slot);
+			if (pending != GePlannedActionType.NONE)
+			{
+				right += " [" + pending.name() + "]";
+			}
 			panelComponent.getChildren().add(LineComponent.builder()
 				.left("S" + slot)
 				.right(right)
