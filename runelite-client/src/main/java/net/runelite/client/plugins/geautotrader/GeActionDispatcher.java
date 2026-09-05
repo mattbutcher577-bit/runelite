@@ -53,10 +53,10 @@ public final class GeActionDispatcher
 				return execute(GeWidgetActionResolver.findUnique(setupRoot(), "Confirm"));
 			case ABORT_BUY:
 				return execute(GeWidgetActionResolver.findUnique(
-					exactComponentRoot(InterfaceID.GeOffers.DETAILS_MODIFY), "Abort offer", "Abort"));
+					offerStatusRoot(InterfaceID.GeOffers.DETAILS_MODIFY), "Abort offer", "Abort"));
 			case COLLECT:
 				return execute(GeWidgetActionResolver.findUnique(
-					exactComponentRoot(InterfaceID.GeOffers.DETAILS_COLLECT),
+					offerStatusRoot(InterfaceID.GeOffers.DETAILS_COLLECT),
 					"Collect", "Collect items", "Collect coins"));
 			default:
 				return GeReasonCode.EXECUTION_REJECTED;
@@ -151,6 +151,12 @@ public final class GeActionDispatcher
 	{
 		Widget setup = visible(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
 		return setup != null ? setup : visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
+	}
+
+	private Widget offerStatusRoot(int componentId)
+	{
+		Widget exact = exactComponentRoot(componentId);
+		return exact != null ? exact : visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
 	}
 
 	private Widget exactComponentRoot(int componentId)
