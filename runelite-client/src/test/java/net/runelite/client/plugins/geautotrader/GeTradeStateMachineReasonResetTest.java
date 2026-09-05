@@ -11,20 +11,25 @@ public class GeTradeStateMachineReasonResetTest
 	@Test
 	public void testHealthySettledTickClearsStaleLoginResyncWhenOwnedSlotsAreOccupied()
 	{
+		Instant now = Instant.parse("2026-09-05T10:00:00Z");
+		GeTradeLedger trades = new GeTradeLedger();
+		trades.reserveBuy("v6-buy-1", 1, 1511, "Oak logs", 1000, 14, 15);
+		trades.reserveBuy("v6-buy-2", 2, 333, "Trout", 1000, 18, 19);
+		trades.reserveBuy("v6-buy-3", 3, 950, "Silk", 1000, 20, 21);
+
 		GeTradeStateMachine machine = new GeTradeStateMachine(
 			config(),
 			new GeLimitLedger(),
-			new GeTradeLedger(),
-			() -> new GeMarketSnapshot(Instant.parse("2026-09-05T10:00:00Z"), Collections.emptyList()),
+			trades,
+			() -> new GeMarketSnapshot(now, Collections.emptyList()),
 			() -> true,
 			() -> false);
 
-		Instant now = Instant.parse("2026-09-05T10:00:00Z");
 		machine.onTick(state(false), now);
 		assertEquals(GeReasonCode.LOGIN_RESYNC, machine.getLastReason());
 
 		machine.onTick(state(true), now.plusSeconds(2));
-		assertEquals(GeReasonCode.NO_OPPORTUNITY, machine.getLastReason());
+		assertEquals(GeReasonCode.OK, machine.getLastReason());
 	}
 
 	private static GeObservedState state(boolean settled)
@@ -40,7 +45,7 @@ public class GeTradeStateMachineReasonResetTest
 			Arrays.asList(
 				new GeObservedSlot(1, "BUYING", 1511, 1000, 0, 14),
 				new GeObservedSlot(2, "BUYING", 333, 1000, 0, 18),
-				new GeObservedSlot(3, "EMPTY", -1, 0, 0, 0)),
+				new GeObservedSlot(3, "BUYING", 950, 1000, 0, 20)),
 			Collections.emptyMap(),
 			-1,
 			0,
