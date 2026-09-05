@@ -54,6 +54,51 @@ public class GeBridgeGeActionReaderTest
 		assertFalse(state.getSlots().get(2).getBuyButton().isValid());
 	}
 
+	@Test
+	public void testGenericOccupiedSlotActionsDoNotShiftLiveEmptySlotButtons()
+	{
+		Widget occupiedOpen = action("View offer", 27, 85, 115, 110);
+		Widget occupiedBuyAlias = action("Buy", 27, 85, 115, 25);
+		Widget occupiedSellAlias = action("Sell", 27, 111, 115, 25);
+		Widget buy2 = action("Create Buy offer", 150, 128, 46, 45);
+		Widget sell2 = action("Create Sell offer", 206, 128, 46, 45);
+		Widget buy3 = action("Create Buy offer", 267, 128, 46, 45);
+		Widget sell3 = action("Create Sell offer", 323, 128, 46, 45);
+
+		Widget window = mock(Widget.class);
+		when(window.isHidden()).thenReturn(false);
+		when(window.getBounds()).thenReturn(new Rectangle(4, 4, 512, 334));
+		when(window.getActions()).thenReturn(null);
+		when(window.getText()).thenReturn("");
+		when(window.getName()).thenReturn("");
+		when(window.getChildren()).thenReturn(new Widget[]{
+			occupiedOpen,
+			occupiedBuyAlias,
+			occupiedSellAlias,
+			buy2,
+			sell2,
+			buy3,
+			sell3});
+
+		GeBridgeGeActionState state = GeBridgeGeActionReader.read(
+			window,
+			null,
+			new GrandExchangeOffer[]{
+				offer(GrandExchangeOfferState.BUYING),
+				offer(GrandExchangeOfferState.EMPTY),
+				offer(GrandExchangeOfferState.EMPTY)},
+			99L);
+
+		assertTrue(state.getSlots().get(0).getOpenButton().isValid());
+		assertFalse(state.getSlots().get(0).getBuyButton().isValid());
+		assertFalse(state.getSlots().get(0).getSellButton().isValid());
+
+		assertEquals(150, state.getSlots().get(1).getBuyButton().getX());
+		assertEquals(206, state.getSlots().get(1).getSellButton().getX());
+		assertEquals(267, state.getSlots().get(2).getBuyButton().getX());
+		assertEquals(323, state.getSlots().get(2).getSellButton().getX());
+	}
+
 	private static GrandExchangeOffer offer(GrandExchangeOfferState state)
 	{
 		GrandExchangeOffer offer = mock(GrandExchangeOffer.class);
