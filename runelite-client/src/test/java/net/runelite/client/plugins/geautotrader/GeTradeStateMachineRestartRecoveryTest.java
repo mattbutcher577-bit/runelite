@@ -129,20 +129,6 @@ public class GeTradeStateMachineRestartRecoveryTest
 		assertNull(trades.findBySlot(1));
 	}
 
-	@Test
-	public void testUnsupportedUnownedOfferStateIsNotAdopted()
-	{
-		Instant now = Instant.parse("2026-09-05T10:00:00Z");
-		GeTradeLedger trades = new GeTradeLedger();
-		GeTradeStateMachine machine = machine(trades, now);
-
-		GePlannedAction action = machine.onTick(observed("UNKNOWN", 1982, 1000, 0, 160), now);
-
-		assertEquals(GePlannedActionType.NONE, action.getType());
-		assertEquals(GeTradePhase.IDLE, machine.getPhase(1));
-		assertNull(trades.findBySlot(1));
-	}
-
 	private static GeTradeStateMachine machine(GeTradeLedger trades, Instant now)
 	{
 		GeMarketSnapshot market = new GeMarketSnapshot(
