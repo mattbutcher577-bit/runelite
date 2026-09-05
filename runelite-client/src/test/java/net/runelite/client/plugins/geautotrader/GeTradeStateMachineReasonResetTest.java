@@ -24,7 +24,7 @@ public class GeTradeStateMachineReasonResetTest
 		assertEquals(GeReasonCode.LOGIN_RESYNC, machine.getLastReason());
 
 		machine.onTick(state(true), now.plusSeconds(2));
-		assertEquals(GeReasonCode.OK, machine.getLastReason());
+		assertEquals(GeReasonCode.NO_OPPORTUNITY, machine.getLastReason());
 	}
 
 	private static GeObservedState state(boolean settled)
