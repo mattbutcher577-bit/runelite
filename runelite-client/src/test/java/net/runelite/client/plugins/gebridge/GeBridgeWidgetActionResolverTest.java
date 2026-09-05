@@ -29,6 +29,21 @@ public class GeBridgeWidgetActionResolverTest
 	}
 
 	@Test
+	public void testActionOnlyLookupIgnoresMatchingTextAndName()
+	{
+		Widget root = mock(Widget.class);
+		Widget textOnly = widget(new Rectangle(10, 10, 30, 20), null, "Create Buy offer", "");
+		Widget nameOnly = widget(new Rectangle(50, 10, 30, 20), null, "", "Create Buy offer");
+		Widget actionable = widget(new Rectangle(90, 10, 30, 20), new String[]{"Create Buy offer"}, "", "");
+		when(root.isHidden()).thenReturn(false);
+		when(root.getChildren()).thenReturn(new Widget[]{textOnly, nameOnly, actionable});
+
+		GeBridgeBounds bounds = GeBridgeWidgetActionResolver.findUniqueAction(root, "Create Buy offer");
+		assertTrue(bounds.isValid());
+		assertEquals(90, bounds.getX());
+	}
+
+	@Test
 	public void testAmbiguousActionFailsClosed()
 	{
 		Widget root = mock(Widget.class);
