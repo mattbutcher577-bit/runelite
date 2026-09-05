@@ -475,6 +475,18 @@ public class GeBridgePlugin extends Plugin
 		GeBridgeInterfaceState interfaceState,
 		GeBridgeGeState geState)
 	{
+		Widget[] slotRoots =
+		{
+			client.getWidget(InterfaceID.GeOffers.INDEX_0),
+			client.getWidget(InterfaceID.GeOffers.INDEX_1),
+			client.getWidget(InterfaceID.GeOffers.INDEX_2),
+			client.getWidget(InterfaceID.GeOffers.INDEX_3),
+			client.getWidget(InterfaceID.GeOffers.INDEX_4),
+			client.getWidget(InterfaceID.GeOffers.INDEX_5),
+			client.getWidget(InterfaceID.GeOffers.INDEX_6),
+			client.getWidget(InterfaceID.GeOffers.INDEX_7)
+		};
+
 		return GeBridgeLiveGeSections.read(
 			interfaceState.isGrandExchangeOfferSetupOpen(),
 			client.getVarcIntValue(VarClientID.MESLAYERMODE),
@@ -487,6 +499,9 @@ public class GeBridgePlugin extends Plugin
 			client.getWidget(WidgetInfo.GRAND_EXCHANGE_INVENTORY_ITEMS_CONTAINER),
 			itemManager,
 			client.getGrandExchangeOffers(),
+			slotRoots,
+			client.getWidget(InterfaceID.GeOffers.DETAILS_COLLECT),
+			client.getWidget(InterfaceID.GeOffers.DETAILS_MODIFY),
 			bridgeTick);
 	}
 
