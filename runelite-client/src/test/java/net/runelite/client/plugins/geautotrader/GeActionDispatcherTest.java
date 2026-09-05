@@ -49,7 +49,7 @@ public class GeActionDispatcherTest
 	public void testOpenBuyRecognizesCreateBuyOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget buy = slotWidget(client, "Create Buy offer");
+		Widget buy = slotWidget(client, 1, "Create Buy offer");
 		when(buy.getIndex()).thenReturn(7);
 		when(buy.getId()).thenReturn(54321);
 
@@ -62,7 +62,7 @@ public class GeActionDispatcherTest
 	{
 		Client client = mock(Client.class);
 		String liveAction = "<col=ff9040>Create Buy offer</col>";
-		Widget buy = slotWidget(client, liveAction);
+		Widget buy = slotWidget(client, 1, liveAction);
 		when(buy.getIndex()).thenReturn(7);
 		when(buy.getId()).thenReturn(54321);
 
@@ -74,13 +74,15 @@ public class GeActionDispatcherTest
 	public void testOpenBuyIgnoresGenericBuyActionOnOccupiedSlot()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
+		Widget window = visibleWidget();
 		Widget occupiedBuyAlias = actionWidget("Buy", 1, 50001, -1, "Steel dagger");
 		Widget slot2Buy = actionWidget("Create Buy offer", 2, 50002, -1, "");
 		Widget slot3Buy = actionWidget("Create Buy offer", 3, 50003, -1, "");
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
 		when(window.getChildren()).thenReturn(new Widget[]{occupiedBuyAlias, slot2Buy, slot3Buy});
+		Widget slot2Root = visibleWidget();
+		when(slot2Root.getChildren()).thenReturn(new Widget[]{slot2Buy});
+		when(client.getWidget(InterfaceID.GeOffers.INDEX_1)).thenReturn(slot2Root);
 
 		GeObservedState state = new GeObservedState(
 			true, false, true, true, false, 2_035_687L,
@@ -100,13 +102,15 @@ public class GeActionDispatcherTest
 	public void testOpenSellIgnoresGenericSellActionOnOccupiedSlot()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
+		Widget window = visibleWidget();
 		Widget occupiedSellAlias = actionWidget("Sell", 1, 51001, -1, "Steel dagger");
 		Widget slot2Sell = actionWidget("Create Sell offer", 2, 51002, -1, "");
 		Widget slot3Sell = actionWidget("Create Sell offer", 3, 51003, -1, "");
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
 		when(window.getChildren()).thenReturn(new Widget[]{occupiedSellAlias, slot2Sell, slot3Sell});
+		Widget slot2Root = visibleWidget();
+		when(slot2Root.getChildren()).thenReturn(new Widget[]{slot2Sell});
+		when(client.getWidget(InterfaceID.GeOffers.INDEX_1)).thenReturn(slot2Root);
 
 		GeObservedState state = new GeObservedState(
 			true, false, true, true, false, 2_035_687L,
@@ -126,7 +130,7 @@ public class GeActionDispatcherTest
 	public void testOpenSellRecognizesCreateSellOfferAction()
 	{
 		Client client = mock(Client.class);
-		Widget sell = slotWidget(client, "Create Sell offer");
+		Widget sell = slotWidget(client, 1, "Create Sell offer");
 		when(sell.getIndex()).thenReturn(8);
 		when(sell.getId()).thenReturn(54322);
 
@@ -139,7 +143,7 @@ public class GeActionDispatcherTest
 	public void testOpenOfferUsesNonEmptySlotViewAction()
 	{
 		Client client = mock(Client.class);
-		Widget view = slotWidget(client, "View offer");
+		Widget view = slotWidget(client, 1, "View offer");
 		when(view.getIndex()).thenReturn(9);
 		when(view.getId()).thenReturn(54323);
 
@@ -152,12 +156,14 @@ public class GeActionDispatcherTest
 	public void testOpenOfferIgnoresGenericViewActionOutsideTargetSlot()
 	{
 		Client client = mock(Client.class);
-		Widget window = mock(Widget.class);
+		Widget window = visibleWidget();
 		Widget unrelatedView = actionWidget("View", 1, 52001, -1, "GE History");
 		Widget targetView = actionWidget("View offer", 2, 52002, -1, "Sardine");
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
 		when(window.getChildren()).thenReturn(new Widget[]{unrelatedView, targetView});
+		Widget slot2Root = visibleWidget();
+		when(slot2Root.getChildren()).thenReturn(new Widget[]{targetView});
+		when(client.getWidget(InterfaceID.GeOffers.INDEX_1)).thenReturn(slot2Root);
 
 		GeObservedState state = new GeObservedState(
 			true, false, true, true, false, 2_035_687L,
@@ -231,14 +237,37 @@ public class GeActionDispatcherTest
 		verify(client).menuAction(3, 44444, MenuAction.CC_OP, 1, -1, alias, "");
 	}
 
-	private static Widget slotWidget(Client client, String alias)
+	private static Widget slotWidget(Client client, int slot, String alias)
 	{
-		Widget window = mock(Widget.class);
+		Widget window = visibleWidget();
+		Widget root = visibleWidget();
 		Widget target = actionWidget(alias, 0, 0, -1, "");
 		when(client.getWidget(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER)).thenReturn(window);
-		when(window.isHidden()).thenReturn(false);
-		when(window.getChildren()).thenReturn(new Widget[]{target});
+		when(root.getChildren()).thenReturn(new Widget[]{target});
+		when(client.getWidget(slotComponent(slot))).thenReturn(root);
 		return target;
+	}
+
+	private static int slotComponent(int slot)
+	{
+		switch (slot)
+		{
+			case 1:
+				return InterfaceID.GeOffers.INDEX_0;
+			case 2:
+				return InterfaceID.GeOffers.INDEX_1;
+			case 3:
+				return InterfaceID.GeOffers.INDEX_2;
+			default:
+				throw new IllegalArgumentException("slot");
+		}
+	}
+
+	private static Widget visibleWidget()
+	{
+		Widget widget = mock(Widget.class);
+		when(widget.isHidden()).thenReturn(false);
+		return widget;
 	}
 
 	private static Widget actionWidget(String alias, int index, int id, int itemId, String name)
