@@ -66,10 +66,10 @@ public class GeTradeStateMachineSellTest
 			GePromptMode.NONE, 1127, 73, 9321, GeTradeSide.SELL, inventory, 2_035_687L), now.plusSeconds(18));
 		assertEquals(GePlannedActionType.CONFIRM, action.getType());
 
-		GePlannedAction duplicate = machine.onTick(GeTradeStateMachineCollectTest.state(
+		GePlannedAction retry = machine.onTick(GeTradeStateMachineCollectTest.state(
 			GeTradeStateMachineCollectTest.slot("EMPTY", -1, 0, 0, 0),
 			GePromptMode.NONE, 1127, 73, 9321, GeTradeSide.SELL, inventory, 2_035_687L), now.plusSeconds(19));
-		assertEquals(GePlannedActionType.NONE, duplicate.getType());
+		assertEquals(GePlannedActionType.CONFIRM, retry.getType());
 
 		machine.onTick(GeTradeStateMachineCollectTest.state(
 			GeTradeStateMachineCollectTest.slot("SELLING", 1127, 73, 0, 9321),
