@@ -52,9 +52,9 @@ public final class GeActionDispatcher
 			case CONFIRM:
 				return execute(GeWidgetActionResolver.findUnique(setupRoot(), "Confirm"));
 			case ABORT_BUY:
-				return execute(GeWidgetActionResolver.findUnique(setupRoot(), "Abort offer", "Abort"));
+				return execute(GeWidgetActionResolver.findUnique(offerStatusRoot(), "Abort offer", "Abort"));
 			case COLLECT:
-				return execute(GeWidgetActionResolver.findUnique(setupRoot(),
+				return execute(GeWidgetActionResolver.findUnique(offerStatusRoot(),
 					"Collect", "Collect items", "Collect coins"));
 			default:
 				return GeReasonCode.EXECUTION_REJECTED;
@@ -149,6 +149,11 @@ public final class GeActionDispatcher
 	{
 		Widget setup = visible(WidgetInfo.GRAND_EXCHANGE_OFFER_CONTAINER);
 		return setup != null ? setup : visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
+	}
+
+	private Widget offerStatusRoot()
+	{
+		return visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER);
 	}
 
 	private Widget visible(WidgetInfo info)
