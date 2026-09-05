@@ -44,6 +44,22 @@ public class GeOfferStatusComponentDispatchTest
 	}
 
 	@Test
+	public void testCollectUsesFirstAvailableOutputWhenItemAndRefundAreBothPresent()
+	{
+		Client client = mock(Client.class);
+		Widget root = visibleRoot();
+		Widget item = actionWidget("Collect-items", 3, 62006, "Steel dagger");
+		Widget refund = actionWidget("Collect", 4, 62007, "Coins");
+		when(root.getDynamicChildren()).thenReturn(new Widget[]{item, refund});
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS_COLLECT)).thenReturn(root);
+
+		assertEquals(
+			GeReasonCode.OK,
+			dispatcher(client).dispatch(action(GePlannedActionType.COLLECT), null));
+		verify(client).menuAction(3, 62006, MenuAction.CC_OP, 1, -1, "Collect-items", "Steel dagger");
+	}
+
+	@Test
 	public void testAbortUsesExactDetailsModifyComponentEvenWhenNotUnderWindowRoot()
 	{
 		Client client = mock(Client.class);
