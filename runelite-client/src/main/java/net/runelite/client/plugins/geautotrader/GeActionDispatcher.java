@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.geautotrader;
 
+import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -69,7 +70,7 @@ public final class GeActionDispatcher
 				return execute(findOfferStatusAction(
 					InterfaceID.GeOffers.DETAILS_MODIFY, "Abort offer", "Abort"));
 			case COLLECT:
-				return execute(findOfferStatusAction(
+				return execute(findFirstOfferStatusAction(
 					InterfaceID.GeOffers.DETAILS_COLLECT, COLLECT_ALIASES));
 			default:
 				return GeReasonCode.EXECUTION_REJECTED;
@@ -184,6 +185,27 @@ public final class GeActionDispatcher
 
 		return GeWidgetActionResolver.findUnique(
 			visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER), aliases);
+	}
+
+	private GeWidgetActionSpec findFirstOfferStatusAction(int preferredComponentId, String... aliases)
+	{
+		GeWidgetActionSpec spec = firstAction(exactComponentRoot(preferredComponentId), aliases);
+		if (spec != null)
+		{
+			return spec;
+		}
+		spec = firstAction(exactComponentRoot(InterfaceID.GeOffers.DETAILS), aliases);
+		if (spec != null)
+		{
+			return spec;
+		}
+		return firstAction(visible(WidgetInfo.GRAND_EXCHANGE_WINDOW_CONTAINER), aliases);
+	}
+
+	private static GeWidgetActionSpec firstAction(Widget root, String... aliases)
+	{
+		List<GeWidgetActionSpec> matches = GeWidgetActionResolver.findAll(root, aliases);
+		return matches.isEmpty() ? null : matches.get(0);
 	}
 
 	private Widget exactComponentRoot(int componentId)
