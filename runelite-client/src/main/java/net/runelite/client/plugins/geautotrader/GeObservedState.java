@@ -25,6 +25,7 @@ public final class GeObservedState
 	private final GeTradeSide setupSide;
 	private final GePromptMode promptMode;
 	private final Set<Integer> searchResultItemIds;
+	private final boolean offerDetailsVisible;
 
 	public GeObservedState(
 		boolean loggedIn,
@@ -54,7 +55,8 @@ public final class GeObservedState
 			setupPrice,
 			setupSide,
 			GePromptMode.UNKNOWN,
-			Collections.emptySet());
+			Collections.emptySet(),
+			false);
 	}
 
 	public GeObservedState(
@@ -75,7 +77,7 @@ public final class GeObservedState
 	{
 		this(loggedIn, membersWorld, loginSettled, geOpen, blockerActive, world, gp, slots,
 			inventoryCounts, setupItemId, setupQuantity, setupPrice, setupSide, promptMode,
-			Collections.emptySet());
+			Collections.emptySet(), false);
 	}
 
 	public GeObservedState(
@@ -95,6 +97,29 @@ public final class GeObservedState
 		GePromptMode promptMode,
 		Set<Integer> searchResultItemIds)
 	{
+		this(loggedIn, membersWorld, loginSettled, geOpen, blockerActive, world, gp, slots,
+			inventoryCounts, setupItemId, setupQuantity, setupPrice, setupSide, promptMode,
+			searchResultItemIds, false);
+	}
+
+	public GeObservedState(
+		boolean loggedIn,
+		boolean membersWorld,
+		boolean loginSettled,
+		boolean geOpen,
+		boolean blockerActive,
+		int world,
+		long gp,
+		List<GeObservedSlot> slots,
+		Map<Integer, Integer> inventoryCounts,
+		int setupItemId,
+		int setupQuantity,
+		int setupPrice,
+		GeTradeSide setupSide,
+		GePromptMode promptMode,
+		Set<Integer> searchResultItemIds,
+		boolean offerDetailsVisible)
+	{
 		this.loggedIn = loggedIn;
 		this.membersWorld = membersWorld;
 		this.loginSettled = loginSettled;
@@ -112,6 +137,7 @@ public final class GeObservedState
 		this.promptMode = promptMode == null ? GePromptMode.UNKNOWN : promptMode;
 		this.searchResultItemIds = Collections.unmodifiableSet(new HashSet<>(
 			searchResultItemIds == null ? Collections.emptySet() : searchResultItemIds));
+		this.offerDetailsVisible = offerDetailsVisible;
 	}
 
 	public boolean isLoggedIn()
@@ -198,5 +224,10 @@ public final class GeObservedState
 	public boolean hasSearchResult(int itemId)
 	{
 		return searchResultItemIds.contains(itemId);
+	}
+
+	public boolean isOfferDetailsVisible()
+	{
+		return offerDetailsVisible;
 	}
 }
