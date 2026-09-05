@@ -31,11 +31,11 @@ public final class GeActionDispatcher
 		switch (action.getType())
 		{
 			case OPEN_BUY:
-				return execute(slotAction(state, action.getSlot(), true, "Create Buy offer", "Buy"));
+				return execute(slotAction(state, action.getSlot(), true, "Create Buy offer"));
 			case OPEN_SELL:
-				return execute(slotAction(state, action.getSlot(), true, "Create Sell offer", "Sell"));
+				return execute(slotAction(state, action.getSlot(), true, "Create Sell offer"));
 			case OPEN_OFFER:
-				return execute(slotAction(state, action.getSlot(), false, "View offer", "View"));
+				return execute(slotAction(state, action.getSlot(), false, "View offer"));
 			case TYPE_ITEM_SEARCH:
 				return promptInput.typeItemSearch(action.getItemName(), state);
 			case SELECT_ITEM:
