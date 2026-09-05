@@ -12,6 +12,7 @@ public final class GeTradeObligation
 	private final int intendedQuantity;
 	private final int intendedPrice;
 	private final String parentId;
+	private final int targetSellPrice;
 	private Instant placedAt;
 	private int filledQuantity;
 	private int abortCount;
@@ -26,6 +27,21 @@ public final class GeTradeObligation
 		int intendedPrice,
 		String parentId)
 	{
+		this(id, slot, side, itemId, itemName, intendedQuantity, intendedPrice, parentId,
+			side == GeTradeSide.SELL ? intendedPrice : 0);
+	}
+
+	GeTradeObligation(
+		String id,
+		int slot,
+		GeTradeSide side,
+		int itemId,
+		String itemName,
+		int intendedQuantity,
+		int intendedPrice,
+		String parentId,
+		int targetSellPrice)
+	{
 		this.id = id;
 		this.slot = slot;
 		this.side = side;
@@ -34,6 +50,7 @@ public final class GeTradeObligation
 		this.intendedQuantity = intendedQuantity;
 		this.intendedPrice = intendedPrice;
 		this.parentId = parentId;
+		this.targetSellPrice = Math.max(0, targetSellPrice);
 	}
 
 	public String getId()
@@ -74,6 +91,11 @@ public final class GeTradeObligation
 	public String getParentId()
 	{
 		return parentId;
+	}
+
+	public int getTargetSellPrice()
+	{
+		return targetSellPrice;
 	}
 
 	public Instant getPlacedAt()
