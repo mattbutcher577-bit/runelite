@@ -4,6 +4,7 @@ import java.awt.Rectangle;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.widgets.Widget;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import static org.mockito.Mockito.mock;
@@ -37,6 +38,21 @@ public class GeBridgeExactComponentRootsTest
 		assertTrue(state.getSlots().get(0).getOpenButton().isValid());
 		assertTrue(state.getCollect().isValid());
 		assertTrue(state.getAbort().isValid());
+	}
+
+	@Test
+	public void testBridgeUsesFirstCollectOutputWhenItemAndRefundAreReady()
+	{
+		Widget window = visibleRoot(new Rectangle(4, 4, 512, 334));
+		Widget first = action("Collect-items", 430, 245, 36, 36);
+		Widget second = action("Collect", 470, 245, 36, 36);
+		Widget collectRoot = visibleRoot(new Rectangle(420, 235, 90, 50), first, second);
+
+		GeBridgeGeActionState state = GeBridgeGeActionReader.read(
+			window, null, null, null, collectRoot, null, 103L);
+
+		assertTrue(state.getCollect().isValid());
+		assertEquals(430, state.getCollect().getX());
 	}
 
 	@Test
