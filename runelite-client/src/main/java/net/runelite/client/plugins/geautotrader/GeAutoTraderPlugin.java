@@ -216,7 +216,8 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 			return;
 		}
 
-		GePlannedAction action = stateMachine.onTick(lastState, Instant.now());
+		Instant now = Instant.now();
+		GePlannedAction action = stateMachine.onTick(lastState, now);
 		lastAction = action;
 		lastReason = stateMachine.getLastReason();
 		persistRuntimeLedger();
@@ -226,11 +227,12 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		}
 
 		GeReasonCode executionResult = dispatcher.dispatch(action, lastState);
-		if (executionResult != GeReasonCode.OK)
+		boolean terminalFailure = stateMachine.recordExecutionResult(
+			action, executionResult, Instant.now());
+		lastReason = stateMachine.getLastReason();
+		persistRuntimeLedger();
+		if (terminalFailure)
 		{
-			lastReason = executionResult;
-			// Fail closed. The state machine has already advanced past the emitted action;
-			// stopping prevents it from acting on an unproved transition.
 			stopForExecutionFailure();
 		}
 	}
@@ -320,7 +322,9 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 		{
 			return "PAUSED";
 		}
-		return lastReason == GeReasonCode.OK || lastReason == GeReasonCode.NO_OPPORTUNITY
+		return lastReason == GeReasonCode.OK
+			|| lastReason == GeReasonCode.NO_OPPORTUNITY
+			|| lastReason == GeReasonCode.EXECUTION_TARGET_UNAVAILABLE
 			? "RUNNING" : "PAUSED";
 	}
 
@@ -379,6 +383,11 @@ public class GeAutoTraderPlugin extends Plugin implements KeyListener
 	GeCandidate getCandidate(int slot)
 	{
 		return stateMachine == null ? null : stateMachine.getCurrentCandidate(slot);
+	}
+
+	GePlannedActionType getPendingAction(int slot)
+	{
+		return stateMachine == null ? GePlannedActionType.NONE : stateMachine.getPendingAction(slot);
 	}
 
 	GePlannedAction getLastAction()
