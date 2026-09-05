@@ -7,6 +7,20 @@ import net.runelite.api.widgets.WidgetInfo;
 
 public final class GeActionDispatcher
 {
+	private static final String[] COLLECT_ALIASES =
+	{
+		"Collect",
+		"Collect item",
+		"Collect items",
+		"Collect note",
+		"Collect notes",
+		"Collect-item",
+		"Collect-items",
+		"Collect-note",
+		"Collect-notes",
+		"Collect coins"
+	};
+
 	private final Client client;
 	private final GeExecutionService execution;
 	private final GePromptInputService promptInput;
@@ -56,8 +70,7 @@ public final class GeActionDispatcher
 					InterfaceID.GeOffers.DETAILS_MODIFY, "Abort offer", "Abort"));
 			case COLLECT:
 				return execute(findOfferStatusAction(
-					InterfaceID.GeOffers.DETAILS_COLLECT,
-					"Collect", "Collect items", "Collect coins"));
+					InterfaceID.GeOffers.DETAILS_COLLECT, COLLECT_ALIASES));
 			default:
 				return GeReasonCode.EXECUTION_REJECTED;
 		}
