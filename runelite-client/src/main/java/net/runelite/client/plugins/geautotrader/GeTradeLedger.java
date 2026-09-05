@@ -12,9 +12,21 @@ public final class GeTradeLedger
 
 	public GeTradeObligation reserveBuy(String id, int slot, int itemId, String itemName, int quantity, int price)
 	{
+		return reserveBuy(id, slot, itemId, itemName, quantity, price, 0);
+	}
+
+	public GeTradeObligation reserveBuy(
+		String id,
+		int slot,
+		int itemId,
+		String itemName,
+		int quantity,
+		int price,
+		int targetSellPrice)
+	{
 		validateNew(id, slot, quantity, price);
 		GeTradeObligation obligation = new GeTradeObligation(
-			id, slot, GeTradeSide.BUY, itemId, itemName, quantity, price, null);
+			id, slot, GeTradeSide.BUY, itemId, itemName, quantity, price, null, targetSellPrice);
 		obligations.put(id, obligation);
 		return obligation;
 	}
@@ -30,7 +42,7 @@ public final class GeTradeLedger
 	{
 		validateNew(id, slot, quantity, price);
 		GeTradeObligation obligation = new GeTradeObligation(
-			id, slot, GeTradeSide.SELL, itemId, itemName, quantity, price, parentId);
+			id, slot, GeTradeSide.SELL, itemId, itemName, quantity, price, parentId, price);
 		obligations.put(id, obligation);
 		return obligation;
 	}
@@ -76,6 +88,18 @@ public final class GeTradeLedger
 	public GeTradeObligation get(String id)
 	{
 		return obligations.get(id);
+	}
+
+	GeTradeObligation findBySlot(int slot)
+	{
+		for (GeTradeObligation obligation : obligations.values())
+		{
+			if (obligation != null && obligation.getSlot() == slot)
+			{
+				return obligation;
+			}
+		}
+		return null;
 	}
 
 	private GeTradeObligation require(String id)
