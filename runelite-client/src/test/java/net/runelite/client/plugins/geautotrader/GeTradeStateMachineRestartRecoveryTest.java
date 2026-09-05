@@ -3,6 +3,7 @@ package net.runelite.client.plugins.geautotrader;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -25,6 +26,37 @@ public class GeTradeStateMachineRestartRecoveryTest
 
 		assertEquals(GePlannedActionType.OPEN_OFFER, action.getType());
 		assertEquals(GeTradePhase.WAIT_BUY_COLLECT_READY, machine.getPhase(1));
+	}
+
+	@Test
+	public void testAlreadyCollectedOwnedBuyReconcilesToSellInEmptySlot()
+	{
+		Instant now = Instant.parse("2026-09-05T10:00:00Z");
+		GeTradeLedger trades = new GeTradeLedger();
+		trades.reserveBuy("v6-buy-7", 1, 1982, "Tomato", 1000, 160, 180);
+		trades.markPlaced("v6-buy-7", now.minusSeconds(30));
+		trades.markFilled("v6-buy-7", 1000);
+		GeTradeStateMachine machine = machine(trades, now);
+
+		Map<Integer, Integer> inventory = new HashMap<>();
+		inventory.put(1982, 1000);
+		GeObservedState state = new GeObservedState(
+			true, false, true, true, false, 453, 2_000_000L,
+			Arrays.asList(
+				new GeObservedSlot(1, "BUYING", 1511, 1000, 0, 14),
+				new GeObservedSlot(2, "BUYING", 333, 1000, 0, 18),
+				new GeObservedSlot(3, "EMPTY", -1, 0, 0, 0)),
+			inventory, -1, 0, 0, GeTradeSide.UNKNOWN, GePromptMode.NONE);
+
+		GePlannedAction action = machine.onTick(state, now);
+
+		assertEquals(GePlannedActionType.OPEN_SELL, action.getType());
+		assertEquals(3, action.getSlot());
+		assertEquals(1000, action.getQuantity());
+		assertEquals(180, action.getPrice());
+		assertNull(trades.findBySlot(1));
+		assertNotNull(trades.findBySlot(3));
+		assertEquals(GeTradeSide.SELL, trades.findBySlot(3).getSide());
 	}
 
 	@Test
