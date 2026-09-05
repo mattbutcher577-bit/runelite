@@ -55,6 +55,23 @@ public class GeStateReaderTest
 	}
 
 	@Test
+	public void testReadsOfferDetailsVisibilityFromExactComponent()
+	{
+		Client client = baseClient();
+		Widget details = mock(Widget.class);
+		when(details.isHidden()).thenReturn(false);
+		when(client.getWidget(InterfaceID.GeOffers.DETAILS)).thenReturn(details);
+
+		assertTrue(new GeStateReader(client).read(true).isOfferDetailsVisible());
+	}
+
+	@Test
+	public void testOfferDetailsDefaultsClosedWhenComponentMissing()
+	{
+		assertFalse(new GeStateReader(baseClient()).read(true).isOfferDetailsVisible());
+	}
+
+	@Test
 	public void testReadsExactBuySetupAndQuantityPrompt()
 	{
 		Client client = baseClient();
